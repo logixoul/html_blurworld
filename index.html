@@ -13,21 +13,19 @@
 			import * as THREE from './src/lib/node_modules/three/src/Three.js';
 			
 			var scene = new THREE.Scene();
-			var camera = new THREE.OrthographicCamera( 0, window.innerWidth, 0, window.innerHeight, -1000, 1000 );
+			var camera = new THREE.OrthographicCamera( 0, 1, 0, 1, -1000, 1000 );
 
 			var renderer = new THREE.WebGLRenderer();
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			document.body.appendChild( renderer.domElement );
 
-			var geometry = new THREE.BoxGeometry();
-			var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+			var geometry = new THREE.PlaneGeometry();
+			var material = new THREE.MeshBasicMaterial( { color: 0x00ff00, side: THREE.DoubleSide } );
 			var cube = new THREE.Mesh( geometry, material );
-			cube.position.set(window.innerWidth/2,window.innerHeight/2, 0);
+
+			cube.position.set(.5, .5, 0);
+
 			scene.add( cube );
-
-			cube.scale.set(100, 100, 100);
-
-			//camera.position.z = 5;
 
 			/*var bufferScene = new THREE.Scene();
 			var bufferTexture = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});*/
@@ -36,9 +34,6 @@
 
 			function animate() {
 				requestAnimationFrame( animate );
-				cube.rotation.x += 0.01;
-				cube.rotation.y += 0.01;
-				//cube.scale.x = 1000 * (.5+.5*Math.sin(time));
 				renderer.render( scene, camera );
 			}
 			animate();

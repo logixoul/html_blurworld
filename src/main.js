@@ -5,12 +5,8 @@ import { shade } from './shade.js';
 import { renderer, drawTexToScreen } from './util.js';
 
 var tex = shade(renderer, [], `
-	void main() {
-		float r = vUv.x;
-		float g = vUv.y;
-
-		gl_FragColor = vec4( r, g, 0, 1.0 );
-	}
+	//vec3 c = fetch3();
+	_out.rgb = vec3( vUv.x, vUv.y, 0 );
 `);
 
 function animate() {

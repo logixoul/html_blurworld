@@ -1,4 +1,5 @@
 import * as THREE from './lib/node_modules/three/src/Three.js';
+import { renderer } from './util.js';
 
 const intro = `
 	varying vec2 vUv;
@@ -54,7 +55,7 @@ const outro = `
 	}
 `;
 
-export function shade2(renderer, texs, fshader) {
+export function shade2(texs, fshader) {
 	var camera = new THREE.OrthographicCamera( 0, 1, 1, 0, -1000, 1000 );
 
 	var geometry = new THREE.PlaneBufferGeometry();

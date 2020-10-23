@@ -27,7 +27,7 @@ var forScreen = tex1;
 
 function animate() {
 	requestAnimationFrame( animate );
-	forScreen = shade2(renderer, [forScreen],
+	forScreen = shade2([forScreen],
 		`
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
 		`)

@@ -69,7 +69,8 @@ export function shade(renderer, texs, fshader) {
 	texs.forEach(tex => {
 		const name = "tex" + (i+1);
 		uniformsString += "uniform sampler2D " + name + ";";
-		uniforms[name] = texs[i];
+		uniforms[name] = { value: texs[i] };
+		console.log(name);
 		i++;
 	});
 

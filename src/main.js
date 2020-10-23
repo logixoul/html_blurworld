@@ -5,8 +5,6 @@ import { shade } from './shade.js';
 import { renderer, drawTexToScreen } from './util.js';
 
 var tex = shade(renderer, [], `
-	varying vec2 vUv;
-
 	void main() {
 		float r = vUv.x;
 		float g = vUv.y;

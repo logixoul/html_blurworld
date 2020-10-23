@@ -12,6 +12,8 @@ export function shade(renderer, texs, fshader) {
 		} );
 	var mesh = new THREE.Mesh( geometry, material );
 
+	mesh.position.set(.5, .5, 0);
+
 	var scene = new THREE.Scene();
 	var renderTarget = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
 

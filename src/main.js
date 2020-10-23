@@ -2,7 +2,6 @@
 
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
-import { renderer } from './util.js';
 
 var data = new Float32Array( window.innerWidth * window.innerHeight );
 

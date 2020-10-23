@@ -70,7 +70,7 @@ export function shade2(texs, fshader, options) {
 	if(options && options["toScreen"]) {
 		renderTarget = null;
 	} else {
-	renderTarget = new THREE.WebGLRenderTarget( unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
+		renderTarget = new THREE.WebGLRenderTarget( unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
 	}
 
 	var uniforms = {
@@ -110,11 +110,6 @@ export function shade2(texs, fshader, options) {
 	renderer.render(scene, camera);
 
 	material.dispose();
-	//const ret = renderTarget.texture;
-	//renderTarget.texture = null;
-	//var textureProperties = renderer.properties.get( renderTarget.texture );
-	//delete textureProperties.____webglTexture;
-	//renderTarget.dispose();
 
 	if(options && options["disposeFirstInputTex"]) {
 		texs[0].dispose();

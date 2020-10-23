@@ -1,0 +1,9 @@
+/*new THREE.TextureLoader().load( 'src/test.jpg',
+	t => {
+		tex1 = t
+		forScreen = shade(renderer, [tex1], `
+			vec3 c = fetch3();
+			_out.rgb = c*1.0f+vec3( vUv.x, vUv.y, 0 );
+		`);
+	}
+);*/

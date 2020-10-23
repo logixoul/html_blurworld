@@ -4,34 +4,38 @@ import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import { renderer, drawTexToScreen } from './util.js';
 
-var tex1;
-var forScreen;
-
-var data = new Float32Array( 100*100 );
+var data = new Float32Array( window.innerWidth * window.innerHeight );
 
 for(var i = 0; i < data.length; i++) {
 	data[i] = Math.random();
 }
 
-tex1 = new THREE.DataTexture(data, 100, 100, THREE.RedFormat, THREE.FloatType);
-var forScreen = tex1;
-/*new THREE.TextureLoader().load( 'src/test.jpg',
-	t => {
-		tex1 = t
-		forScreen = shade(renderer, [tex1], `
-			vec3 c = fetch3();
-			_out.rgb = c*1.0f+vec3( vUv.x, vUv.y, 0 );
-		`);
-	}
-);*/
+var tex = new THREE.DataTexture(data, window.innerWidth, window.innerHeight, THREE.RedFormat, THREE.FloatType);
 
 function animate() {
+	//setInterval(animate, 1000);
 	requestAnimationFrame( animate );
-	forScreen = shade2([forScreen],
-		`
+	tex = shade2([tex], `
+		vec3 sum = vec3(0.0);
+		vec2 tsize = vec2(1.0) / vec2(textureSize(tex1, 0));
+		sum += fetch3(tex1, tc + tsize * vec2(-1.0, -1.0)) / 16.0;
+		sum += fetch3(tex1, tc + tsize * vec2(-1.0, 0.0)) / 8.0;
+		sum += fetch3(tex1, tc + tsize * vec2(-1.0, +1.0)) / 16.0;
+
+		sum += fetch3(tex1, tc + tsize * vec2(0.0, -1.0)) / 8.0;
+		sum += fetch3(tex1, tc + tsize * vec2(0.0, 0.0)) / 4.0;
+		sum += fetch3(tex1, tc + tsize * vec2(0.0, +1.0)) / 8.0;
+
+		sum += fetch3(tex1, tc + tsize * vec2(+1.0, -1.0)) / 16.0;
+		sum += fetch3(tex1, tc + tsize * vec2(+1.0, 0.0)) / 8.0;
+		sum += fetch3(tex1, tc + tsize * vec2(+1.0, +1.0)) / 16.0;
+		_out.rgb = sum;
+		`,
+		{disposeFirstInputTex: true});
+	tex = shade2([tex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
-		`)
-	if(forScreen)
-		drawTexToScreen(forScreen);
+		`,
+		{disposeFirstInputTex: true});
+	drawTexToScreen(tex);
 }
 animate();

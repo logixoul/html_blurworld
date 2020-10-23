@@ -55,10 +55,21 @@ const outro = `
 	}
 `;
 
-export function shade2(texs, fshader) {
-	var camera = new THREE.OrthographicCamera( 0, 1, 1, 0, -1000, 1000 );
+var camera = new THREE.OrthographicCamera( 0, 1, 1, 0, -1000, 1000 );
 
-	var geometry = new THREE.PlaneBufferGeometry();
+var geometry = new THREE.PlaneBufferGeometry();
+
+function unpackTexture(t) {
+	if(t.isWebGLRenderTarget)
+		return t.texture;
+	else return t;
+}
+
+export function shade2(texs, fshader, options) {
+	var renderTarget;
+//if(renderTarget === undefined || true) {
+	renderTarget = new THREE.WebGLRenderTarget( unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
+//}
 
 	var uniforms = {
 		time: { value: 0.0 }
@@ -70,8 +81,10 @@ export function shade2(texs, fshader) {
 	texs.forEach(tex => {
 		const name = "tex" + (i+1);
 		uniformsString += "uniform sampler2D " + name + ";";
-		uniforms[name] = { value: texs[i] };
-		console.log(name);
+		var texture = texs[i];
+		if(texture.isWebGLRenderTarget)
+			texture = texture.texture;
+		uniforms[name] = { value: texture };
 		i++;
 	});
 
@@ -88,12 +101,27 @@ export function shade2(texs, fshader) {
 	mesh.position.set(.5, .5, 0);
 
 	var scene = new THREE.Scene();
-	var renderTarget = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
 
 	scene.add( mesh );
+
+	//renderTarget.texture = 
+	//renderTarget.setSize(1,1);
+	//renderTarget.setSize(texs[0].image.width, texs[0].image.height);
 
 	renderer.setRenderTarget(renderTarget);
 	renderer.render(scene, camera);
 
-	return renderTarget.texture;
+	material.dispose();
+	//mesh.dispose();
+	//scene.dispose();
+	//const ret = renderTarget.texture;
+	//renderTarget.texture = null;
+	//var textureProperties = renderer.properties.get( renderTarget.texture );
+	//delete textureProperties.____webglTexture;
+	//renderTarget.dispose();
+
+	if(options && options["disposeFirstInputTex"]) {
+		texs[0].dispose();
+	}
+	return renderTarget;
 }

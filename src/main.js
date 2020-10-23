@@ -4,7 +4,16 @@ import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade } from './shade.js';
 import { renderer, drawTexToScreen } from './util.js';
 
-var tex = shade(renderer, [], document.getElementById( 'fShader' ).textContent);
+var tex = shade(renderer, [], `
+	varying vec2 vUv;
+
+	void main() {
+		float r = vUv.x;
+		float g = vUv.y;
+
+		gl_FragColor = vec4( r, g, 0, 1.0 );
+	}
+`);
 
 function animate() {
 	requestAnimationFrame( animate );

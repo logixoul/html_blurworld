@@ -4,7 +4,7 @@ export var renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
-var scene = new THREE.Scene();
+/*var scene = new THREE.Scene();
 
 var screenGeometry = new THREE.PlaneBufferGeometry();
 var screenMaterial = new THREE.MeshBasicMaterial({
@@ -23,4 +23,4 @@ export function drawTexToScreen(tex) {
 
 	renderer.setRenderTarget(null);
 	renderer.render( scene, camera );
-}
+}*/

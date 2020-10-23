@@ -2,7 +2,7 @@
 
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
-import { renderer, drawTexToScreen } from './util.js';
+import { renderer } from './util.js';
 
 var data = new Float32Array( window.innerWidth * window.innerHeight );
 
@@ -36,6 +36,10 @@ function animate() {
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
 		`,
 		{disposeFirstInputTex: true});
-	drawTexToScreen(tex);
+	tex.texture.format = THREE.LuminanceFormat;
+	shade2([tex], `
+		_out.rgb = vec3(fetch1());
+		`,
+		{toScreen: true});
 }
 animate();

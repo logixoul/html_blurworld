@@ -67,9 +67,11 @@ function unpackTexture(t) {
 
 export function shade2(texs, fshader, options) {
 	var renderTarget;
-//if(renderTarget === undefined || true) {
+	if(options && options["toScreen"]) {
+		renderTarget = null;
+	} else {
 	renderTarget = new THREE.WebGLRenderTarget( unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
-//}
+	}
 
 	var uniforms = {
 		time: { value: 0.0 }
@@ -104,16 +106,10 @@ export function shade2(texs, fshader, options) {
 
 	scene.add( mesh );
 
-	//renderTarget.texture = 
-	//renderTarget.setSize(1,1);
-	//renderTarget.setSize(texs[0].image.width, texs[0].image.height);
-
 	renderer.setRenderTarget(renderTarget);
 	renderer.render(scene, camera);
 
 	material.dispose();
-	//mesh.dispose();
-	//scene.dispose();
 	//const ret = renderTarget.texture;
 	//renderTarget.texture = null;
 	//var textureProperties = renderer.properties.get( renderTarget.texture );

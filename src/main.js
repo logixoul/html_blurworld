@@ -20,7 +20,10 @@ function animate() {
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
 		`);
 	shade2([tex], `
-		_out.rgb = vec3(fetch1());
+		float f = fetch1();
+		float fw = fwidth(f);
+		f = smoothstep(.5-fw, .5+fw, f);
+		_out.rgb = vec3(f);
 		`, {
 			toScreen: true,
 			scale: new THREE.Vector2(4, 4)

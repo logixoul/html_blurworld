@@ -15,11 +15,10 @@ var tex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat
 function animate() {
 	//setInterval(animate, 1000);
 	requestAnimationFrame( animate );
-	tex = ImgProc.blurIterated(tex, {disposeFirstInputTex: true}, 1);
+	tex = ImgProc.blurIterated(tex, 1);
 	tex = shade2([tex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
-		`,
-		{disposeFirstInputTex: true});
+		`);
 	shade2([tex], `
 		_out.rgb = vec3(fetch1());
 		`,

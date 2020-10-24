@@ -113,7 +113,12 @@ export function shade2(texs, fshader, options) {
 
 	material.dispose();
 
-	if(options && options["disposeFirstInputTex"]) {
+	options = options || {};
+	const disposeFirstInputTex = options.disposeFirstInputTex || true;
+	const toScreen = options.toScreen || false;
+	if(toScreen) disposeFirstInputTex = false;
+	
+	if(disposeFirstInputTex) {
 		texs[0].dispose();
 	}
 	return renderTarget;

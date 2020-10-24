@@ -23,7 +23,7 @@ export class Image {
 	set(x, y, val) { this.data[x + y * this.width] = val; }
 };
 
-export function blur(tex, options) {
+export function blur(tex) {
 	tex = shade2([tex], `
 		float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
 		float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
@@ -37,7 +37,7 @@ export function blur(tex, options) {
 					* weight[i];
 		}
 		_out.a = 1.0f;
-		`, options
+		`
 	);
 	tex = shade2([tex], `
 		float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
@@ -52,14 +52,14 @@ export function blur(tex, options) {
 					* weight[i];
 		}
 		_out.a = 1.0f;
-	`, options
+	`
 	);
 	return tex;
 }
 
-export function blurIterated(tex, options, iterations) {
+export function blurIterated(tex, iterations) {
 	for(var i = 0; i < iterations; i++) {
-		tex = blur(tex, options);
+		tex = blur(tex);
 	}
 	return tex;
 }

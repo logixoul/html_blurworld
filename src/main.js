@@ -2,25 +2,24 @@
 
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
-import { blur } from './blur.js';
+import * as ImgProc from './ImgProc.js';
 
-var data = new Float32Array( window.innerWidth * window.innerHeight );
+//var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
-for(var i = 0; i < data.length; i++) {
-	data[i] = Math.random();
-}
+var img = new ImgProc.Image(window.innerWidth/4, window.innerHeight/4);
 
-var tex = new THREE.DataTexture(data, window.innerWidth, window.innerHeight, THREE.RedFormat, THREE.FloatType);
+img.forEach((x, y) => img.set(x, y, Math.random()));
+
+var tex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.FloatType);
 
 function animate() {
 	//setInterval(animate, 1000);
 	requestAnimationFrame( animate );
-	tex = blur(tex, {disposeFirstInputTex: true});
+	tex = ImgProc.blurIterated(tex, {disposeFirstInputTex: true}, 1);
 	tex = shade2([tex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
 		`,
 		{disposeFirstInputTex: true});
-	tex.texture.format = THREE.LuminanceFormat;
 	shade2([tex], `
 		_out.rgb = vec3(fetch1());
 		`,

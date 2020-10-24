@@ -7,3 +7,45 @@
 		`);
 	}
 );*/
+
+/*var scene = new THREE.Scene();
+
+var screenGeometry = new THREE.PlaneBufferGeometry();
+var screenMaterial = new THREE.MeshBasicMaterial({
+	side: THREE.DoubleSide,
+	});
+var planeMesh = new THREE.Mesh( screenGeometry, screenMaterial );
+
+planeMesh.position.set(.5, .5, 0);
+
+scene.add( planeMesh );
+
+var camera = new THREE.OrthographicCamera( 0, 1, 0, 1, -1000, 1000 );
+
+export function drawTexToScreen(tex) {
+	screenMaterial.map = tex;
+
+	renderer.setRenderTarget(null);
+	renderer.render( scene, camera );
+}*/
+
+
+export function oldBlur(tex, options) {
+	return shade2([tex], `
+		vec3 sum = vec3(0.0);
+		vec2 tsize = vec2(1.0) / vec2(textureSize(tex1, 0));
+		sum += fetch3(tex1, tc + tsize * vec2(-1.0, -1.0)) / 16.0;
+		sum += fetch3(tex1, tc + tsize * vec2(-1.0, 0.0)) / 8.0;
+		sum += fetch3(tex1, tc + tsize * vec2(-1.0, +1.0)) / 16.0;
+
+		sum += fetch3(tex1, tc + tsize * vec2(0.0, -1.0)) / 8.0;
+		sum += fetch3(tex1, tc + tsize * vec2(0.0, 0.0)) / 4.0;
+		sum += fetch3(tex1, tc + tsize * vec2(0.0, +1.0)) / 8.0;
+
+		sum += fetch3(tex1, tc + tsize * vec2(+1.0, -1.0)) / 16.0;
+		sum += fetch3(tex1, tc + tsize * vec2(+1.0, 0.0)) / 8.0;
+		sum += fetch3(tex1, tc + tsize * vec2(+1.0, +1.0)) / 16.0;
+		_out.rgb = sum;
+		`,
+		options);
+}

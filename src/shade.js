@@ -5,7 +5,6 @@ const intro = `
 	varying vec2 vUv;
 	vec4 _out;
 	vec2 tc;
-	//uniform sampler2D tex;
 	vec4 fetch4(sampler2D tex_, vec2 tc_) {
 		return texture2D(tex_, tc_).rgba;
 	}
@@ -82,11 +81,14 @@ export function shade2(texs, fshader, options) {
 	var i = 0;
 	texs.forEach(tex => {
 		const name = "tex" + (i+1);
+		const tsizeName = "tsize" + (i+1);
 		uniformsString += "uniform sampler2D " + name + ";";
+		uniformsString += "uniform vec2 " + tsizeName + ";";
 		var texture = texs[i];
 		if(texture.isWebGLRenderTarget)
 			texture = texture.texture;
 		uniforms[name] = { value: texture };
+		uniforms[tsizeName] = { value: new THREE.Vector2(1.0 / texture.image.width, 1.0 / texture.image.height) };
 		i++;
 	});
 

@@ -65,11 +65,21 @@ function unpackTexture(t) {
 }
 
 export function shade2(texs, fshader, options) {
+	options = options || {};
+	var processedOptions = {
+		disposeFirstInputTex: options.disposeFirstInputTex || true,
+		toScreen: options.toScreen || false,
+		scale: options.scale || new THREE.Vector2(1, 1),
+	};
+	if(processedOptions.toScreen) processedOptions.disposeFirstInputTex = false;
+	
 	var renderTarget;
-	if(options && options["toScreen"]) {
+	if(options.toScreen) {
 		renderTarget = null;
 	} else {
-		renderTarget = new THREE.WebGLRenderTarget( unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
+		var size = new THREE.Vector2(unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height);
+		size = size.multiply(processedOptions.scale);
+		renderTarget = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false });
 	}
 
 	var uniforms = {
@@ -113,12 +123,7 @@ export function shade2(texs, fshader, options) {
 
 	material.dispose();
 
-	options = options || {};
-	const disposeFirstInputTex = options.disposeFirstInputTex || true;
-	const toScreen = options.toScreen || false;
-	if(toScreen) disposeFirstInputTex = false;
-	
-	if(disposeFirstInputTex) {
+	if(processedOptions.disposeFirstInputTex) {
 		texs[0].dispose();
 	}
 	return renderTarget;

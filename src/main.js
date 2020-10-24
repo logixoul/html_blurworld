@@ -21,7 +21,9 @@ function animate() {
 		`);
 	shade2([tex], `
 		_out.rgb = vec3(fetch1());
-		`,
-		{toScreen: true});
+		`, {
+			toScreen: true,
+			scale: new THREE.Vector2(4, 4)
+		});
 }
 animate();

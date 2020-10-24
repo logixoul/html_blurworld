@@ -2,7 +2,7 @@
 
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
-import { oldBlur, blur } from './blur.js';
+import { blur } from './blur.js';
 
 var data = new Float32Array( window.innerWidth * window.innerHeight );
 

@@ -8,3 +8,8 @@ export function cloneTex(inTex) {
 	return shade2([inTex], `_out = fetch4();`, { disposeFirstInputTex: false});
 }
 
+export function unpackTex(t) {
+	if(t.isWebGLRenderTarget)
+		return t.texture;
+	else return t;
+}

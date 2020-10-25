@@ -1,5 +1,6 @@
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { renderer } from './util.js';
+import * as util from './util.js';
 
 const intro = `
 	varying vec2 vUv;
@@ -58,11 +59,7 @@ var camera = new THREE.OrthographicCamera( 0, 1, 1, 0, -1000, 1000 );
 
 var geometry = new THREE.PlaneBufferGeometry();
 
-function unpackTexture(t) {
-	if(t.isWebGLRenderTarget)
-		return t.texture;
-	else return t;
-}
+
 
 var programCache = { };
 
@@ -72,7 +69,7 @@ export function shade2(texs, fshader, options) {
 		disposeFirstInputTex: options.disposeFirstInputTex !== undefined ? options.disposeFirstInputTex : true,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
-		itype: options.itype !== undefined ? options.itype : unpackTexture(texs[0]).type,
+		itype: options.itype !== undefined ? options.itype : util.unpackTex(texs[0]).type,
 		uniforms: options.uniforms || { }
 	};
 	if(processedOptions.toScreen) processedOptions.disposeFirstInputTex = false;
@@ -81,7 +78,7 @@ export function shade2(texs, fshader, options) {
 	if(options.toScreen) {
 		renderTarget = null;
 	} else {
-		var size = new THREE.Vector2(unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height);
+		var size = new THREE.Vector2(util.unpackTex(texs[0]).image.width, util.unpackTex(texs[0]).image.height);
 		size = size.multiply(processedOptions.scale);
 		renderTarget = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: processedOptions.itype });
 	}

@@ -3,8 +3,9 @@
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import * as ImgProc from './ImgProc.js';
-import { globals } from './Globals.js'
-import * as Input from './Input.js'
+import { globals } from './Globals.js';
+import * as Input from './Input.js';
+import * as util from './util.js';
 
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
@@ -17,10 +18,24 @@ globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.
 function animate() {
 	//setInterval(animate, 100000);
 	requestAnimationFrame( animate );
+	
+	globals.stateTex = shade2([globals.stateTex], `
+		float f = fetch1();
+		ivec2 fc=  ivec2(gl_FragCoord.xy);
+		ivec2 maxCoords = textureSize(tex1, 0) - ivec2(1, 1);
+		if(fc.x == 0 || fc.y == 0 || fc.x == maxCoords.x || fc.y == maxCoords.y) f = 0.0f;
+		_out.r = f;
+		`, {
+			disposeFirstInputTex: false
+		}
+	);
+
 	globals.stateTex = ImgProc.blurIterated(globals.stateTex, 1);
 	globals.stateTex = shade2([globals.stateTex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
-		`);
+		`, {
+			disposeFirstInputTex: false
+		});
 	var tex2 = shade2([globals.stateTex], `
 		float f = fetch1();
 		float fw = fwidth(f);

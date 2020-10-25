@@ -63,3 +63,28 @@ export function blurIterated(tex, iterations) {
 	}
 	return tex;
 }
+
+export function extrude(inTex) {
+	const iters = 20;
+	var state = cloneTex(inTex);
+	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
+	for(var i = 0; i < iters; i++)
+	{
+		var state = ImgProc.blur(state);
+		state = shade2([state, inTex],
+			`float state = fetch1(tex1);
+			float binary = fetch1(tex2);
+			state *= binary;
+			_out.r = state;`
+			, { disposeFirstInputTex: true }
+			);
+		state = shade2([state, inTex],`
+			float state = fetch1(tex1);
+			float binary = fetch1(tex2);
+			state += binary;
+			_out.r = state;`
+			, { disposeFirstInputTex: true }
+			);
+	}
+	return state;
+}

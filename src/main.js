@@ -3,6 +3,7 @@
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import * as ImgProc from './ImgProc.js';
+import { globals } from './Globals.js'
 
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
@@ -10,45 +11,16 @@ var img = new ImgProc.Image(window.innerWidth/4, window.innerHeight/4, Uint8Arra
 
 img.forEach((x, y) => img.set(x, y, Math.random()*255));
 
-var gState = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
-
-function cloneTex(inTex) {
-	return shade2([inTex], `_out = fetch4();`, { disposeFirstInputTex: false});
-}
-
-function extrude(inTex) {
-	const iters = 20;
-	var state = cloneTex(inTex);
-	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
-	for(var i = 0; i < iters; i++)
-	{
-		var state = ImgProc.blur(state);
-		state = shade2([state, inTex],
-			`float state = fetch1(tex1);
-			float binary = fetch1(tex2);
-			state *= binary;
-			_out.r = state;`
-			, { disposeFirstInputTex: true }
-			);
-		state = shade2([state, inTex],`
-			float state = fetch1(tex1);
-			float binary = fetch1(tex2);
-			state += binary;
-			_out.r = state;`
-			, { disposeFirstInputTex: true }
-			);
-	}
-	return state;
-}
+globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
 
 function animate() {
 	//setInterval(animate, 100000);
 	requestAnimationFrame( animate );
-	gState = ImgProc.blurIterated(gState, 1);
-	gState = shade2([gState], `
+	globals.stateTex = ImgProc.blurIterated(globals.stateTex, 1);
+	globals.stateTex = shade2([globals.stateTex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
 		`);
-	var tex2 = shade2([gState], `
+	var tex2 = shade2([globals.stateTex], `
 		float f = fetch1();
 		float fw = fwidth(f);
 		f = smoothstep(.5-fw, .5+fw, f);

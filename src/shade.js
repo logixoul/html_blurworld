@@ -116,9 +116,6 @@ export function shade2(texs, fshader, options) {
 			blending: THREE.NoBlending
 			} );
 		programCache[fshader_complete] = cachedMaterial;
-		console.log("!");
-	} else {
-		//console.log("good");
 	}
 	var material = cachedMaterial;
 	//material.uniforms = { ...material.uniforms, ...uniforms };

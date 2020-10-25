@@ -5,10 +5,10 @@ export class Image {
 	width;
 	height;
 
-	constructor(width, height) {
+	constructor(width, height, arrayType) {
 		this.width = width;
 		this.height = height;
-		this.data = new Float32Array(width * height);
+		this.data = new arrayType(width * height);
 	}
 
 	forEach(callback) {

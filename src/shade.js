@@ -64,12 +64,15 @@ function unpackTexture(t) {
 	else return t;
 }
 
+var programCache = { };
+
 export function shade2(texs, fshader, options) {
 	options = options || {};
 	var processedOptions = {
 		disposeFirstInputTex: options.disposeFirstInputTex !== undefined ? options.disposeFirstInputTex : true,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
+		itype: options.itype !== undefined ? options.itype : unpackTexture(texs[0]).type,
 	};
 	if(processedOptions.toScreen) processedOptions.disposeFirstInputTex = false;
 	
@@ -79,7 +82,7 @@ export function shade2(texs, fshader, options) {
 	} else {
 		var size = new THREE.Vector2(unpackTexture(texs[0]).image.width, unpackTexture(texs[0]).image.height);
 		size = size.multiply(processedOptions.scale);
-		renderTarget = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false });
+		renderTarget = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: processedOptions.itype });
 	}
 
 	var uniforms = {
@@ -103,14 +106,26 @@ export function shade2(texs, fshader, options) {
 	});
 
 	const fshader_complete = uniformsString + intro + fshader + outro;
-
-	var material = new THREE.ShaderMaterial( {
-		uniforms: uniforms,
-		vertexShader: document.getElementById( 'vertexShader' ).textContent,
-		fragmentShader: fshader_complete,
-		side: THREE.DoubleSide,
-		blending: THREE.NoBlending
-		} );
+	var cachedMaterial = programCache[fshader_complete];
+	if(!cachedMaterial) {
+		cachedMaterial = new THREE.ShaderMaterial( {
+			uniforms: uniforms,
+			vertexShader: document.getElementById( 'vertexShader' ).textContent,
+			fragmentShader: fshader_complete,
+			side: THREE.DoubleSide,
+			blending: THREE.NoBlending
+			} );
+		programCache[fshader_complete] = cachedMaterial;
+		console.log("!");
+	} else {
+		//console.log("good");
+	}
+	var material = cachedMaterial;
+	//material.uniforms = { ...material.uniforms, ...uniforms };
+	//uniforms.forEach(u => material.uniforms[u.
+	for (const [key, value] of Object.entries(uniforms)) {
+		material.uniforms[key] = value;
+	  }
 	var mesh = new THREE.Mesh( geometry, material );
 
 	mesh.position.set(.5, .5, 0);
@@ -122,7 +137,7 @@ export function shade2(texs, fshader, options) {
 	renderer.setRenderTarget(renderTarget);
 	renderer.render(scene, camera);
 
-	material.dispose();
+	//material.dispose();
 
 	if(processedOptions.disposeFirstInputTex) {
 		texs[0].dispose();

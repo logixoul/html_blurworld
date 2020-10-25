@@ -15,6 +15,8 @@ img.forEach((x, y) => img.set(x, y, Math.random()*255));
 
 globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
 
+globals.stateTex.generateMipmaps = true;
+
 function animate() {
 	//setInterval(animate, 100000);
 	requestAnimationFrame( animate );

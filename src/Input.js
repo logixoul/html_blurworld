@@ -30,7 +30,7 @@ document.addEventListener("mousedown", e => {
 });
 
 document.addEventListener("mouseup", e => {
-	isDrawing = true;
+	isDrawing = false;
 });
 
 document.addEventListener("mousemove", e => {

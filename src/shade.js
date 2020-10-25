@@ -73,7 +73,7 @@ export function shade2(texs, fshader, options) {
 		uniforms: options.uniforms || { }
 	};
 	if(processedOptions.toScreen) processedOptions.disposeFirstInputTex = false;
-	
+
 	var renderTarget;
 	if(options.toScreen) {
 		renderTarget = null;
@@ -81,6 +81,7 @@ export function shade2(texs, fshader, options) {
 		var size = new THREE.Vector2(util.unpackTex(texs[0]).image.width, util.unpackTex(texs[0]).image.height);
 		size = size.multiply(processedOptions.scale);
 		renderTarget = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: processedOptions.itype });
+		renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}
 
 	var uniforms = {

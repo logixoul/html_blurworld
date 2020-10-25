@@ -32,7 +32,7 @@ function animate() {
 		}
 	);
 
-	globals.stateTex = ImgProc.blurIterated(globals.stateTex, 1);
+	globals.stateTex = ImgProc.blur(globals.stateTex);
 	globals.stateTex = shade2([globals.stateTex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
 		`, {

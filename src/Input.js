@@ -5,7 +5,7 @@ import * as util from './util.js';
 
 var scene = new THREE.Scene();
 
-var circleGeometry = new THREE.CircleBufferGeometry(5, 32);
+var circleGeometry = new THREE.CircleBufferGeometry(3, 32);
 //var circleGeometry = new THREE.LineBufferGeometry(5, 32);
 var paintMaterial = new THREE.MeshBasicMaterial({
 	side: THREE.DoubleSide,

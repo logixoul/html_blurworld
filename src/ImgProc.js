@@ -30,14 +30,15 @@ export function blur(tex) {
 		_out = texture(tex1, tc) * weight[0];
 		for (int i=1; i<3; i++) {
 			_out +=
-				texture(tex1, tc + vec2(0.0, offset[i]) * tsize1)
+				texture(tex1, tc + vec2(0.0, offset[i]) * tsize1 * width)
 					* weight[i];
 			_out +=
-				texture(tex1, tc - vec2(0.0, offset[i]) * tsize1)
+				texture(tex1, tc - vec2(0.0, offset[i]) * tsize1 * width)
 					* weight[i];
 		}
 		_out.a = 1.0f;
 		`
+		, { uniforms: { width: .45 } }
 	);
 	tex = shade2([tex], `
 		float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
@@ -45,14 +46,15 @@ export function blur(tex) {
 		_out = texture(tex1, tc) * weight[0];
 		for (int i=1; i<3; i++) {
 			_out +=
-				texture(tex1, tc + vec2(offset[i], 0.0) * tsize1)
+				texture(tex1, tc + vec2(offset[i], 0.0) * tsize1 * width)
 					* weight[i];
 			_out +=
-				texture(tex1, tc - vec2(offset[i], 0.0) * tsize1)
+				texture(tex1, tc - vec2(offset[i], 0.0) * tsize1 * width)
 					* weight[i];
 		}
 		_out.a = 1.0f;
 	`
+	, { uniforms: { width: .45 } }
 	);
 	return tex;
 }

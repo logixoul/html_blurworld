@@ -2,6 +2,14 @@ import * as THREE from './lib/node_modules/three/src/Three.js';
 import { renderer } from './util.js';
 import * as util from './util.js';
 
+function mapType(value) {
+	if(value.isVector2)
+		return 'vec2';
+	else if(typeof value === 'number')
+		return 'float';
+}
+	
+
 const intro = `
 	varying vec2 vUv;
 	vec4 _out;
@@ -105,8 +113,9 @@ export function shade2(texs, fshader, options) {
 	});
 
 	Object.keys(processedOptions.uniforms).forEach(key => {
-		uniformsString += "uniform vec2 " + key + ";";
-		uniforms[key] = { value: processedOptions.uniforms[key] };
+		const value=processedOptions.uniforms[key];
+		uniformsString += "uniform " + mapType(value) + " " + key + ";";
+		uniforms[key] = { value: value };
 	});
 
 	const fshader_complete = uniformsString + intro + fshader + outro;

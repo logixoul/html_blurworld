@@ -29,6 +29,19 @@ export function drawTexToScreen(tex) {
 	renderer.render( scene, camera );
 }*/
 
+	/*globals.stateTex = shade2([globals.stateTex], `
+		float f = fetch1();
+		if(distance(gl_FragCoord.xy, mousePos) < 10.0f) f = newVal.x;
+		_out.r = f;
+	`,
+	{
+		uniforms: {
+			mousePos: new THREE.Vector2(e.x/4, globals.stateTex.texture.image.height - 1 - e.y/4),
+			newVal: new THREE.Vector2(e.buttons & 1 ? 1 : 0, 0),
+		},
+		disposeFirstInputTex: false
+	});*/
+
 
 export function oldBlur(tex, options) {
 	return shade2([tex], `

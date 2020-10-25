@@ -1,27 +1,32 @@
 import { globals } from "./Globals.js"
 import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
+import * as util from './util.js';
 
-/*var scene = new THREE.Scene();
+var scene = new THREE.Scene();
 
-var screenGeometry = new THREE.CircleBufferGeometry();
-var screenMaterial = new THREE.MeshBasicMaterial({
+var circleGeometry = new THREE.CircleBufferGeometry(5, 32);
+var paintMaterial = new THREE.MeshBasicMaterial({
 	side: THREE.DoubleSide,
+	//color: '0xffffff'
 	});
-var planeMesh = new THREE.Mesh( screenGeometry, screenMaterial );
+var circleMesh = new THREE.Mesh( circleGeometry, paintMaterial );
 
-planeMesh.position.set(.5, .5, 0);
+circleMesh.position.set(.5, .5, 0);
 
-scene.add( planeMesh );
+scene.add( circleMesh );
 
-var camera = new THREE.OrthographicCamera( 0, 1, 0, 1, -1000, 1000 );
+function drawCircleToTex(tex, center) {
+	var camera = new THREE.OrthographicCamera( 0, util.unpackTex(tex).image.width, util.unpackTex(tex).image.height, 0, -1000, 1000 );
 
-function drawCircleToTex(tex) {
-	screenMaterial.map = tex;
+	circleMesh.position.set(center.x, center.y, 0);
 
-	renderer.setRenderTarget(null);
-	renderer.render( scene, camera );
-}*/
+	util.renderer.setRenderTarget(tex);
+	util.renderer.autoClear = false;
+	util.renderer.render( scene, camera );
+	util.renderer.autoClear = true;
+	util.renderer.setRenderTarget(null);
+}
 
 var isDrawing = false;
 
@@ -33,19 +38,17 @@ document.addEventListener("mouseup", e => {
 	isDrawing = false;
 });
 
+document.body.addEventListener("contextmenu", e => {
+	e.preventDefault();
+	return false;
+});
+
 document.addEventListener("mousemove", e => {
 	if(!isDrawing) {
 		return;
 	}
-	globals.stateTex = shade2([globals.stateTex], `
-		float f = fetch1();
-		if(distance(gl_FragCoord.xy, mousePos) < 10.0f) f = 1.0f;
-		_out.r = f;
-	`,
-	{
-		uniforms: {
-			mousePos: new THREE.Vector2(e.x/4, globals.stateTex.texture.image.height - 1 - e.y/4)
-		},
-		disposeFirstInputTex: false
-	});
+
+	drawCircleToTex(globals.stateTex, new THREE.Vector2(e.x/4, globals.stateTex.texture.image.height - 1 - e.y/4));
+
+
 });

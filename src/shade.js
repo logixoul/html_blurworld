@@ -73,6 +73,7 @@ export function shade2(texs, fshader, options) {
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 		itype: options.itype !== undefined ? options.itype : unpackTexture(texs[0]).type,
+		uniforms: options.uniforms || { }
 	};
 	if(processedOptions.toScreen) processedOptions.disposeFirstInputTex = false;
 	
@@ -105,6 +106,11 @@ export function shade2(texs, fshader, options) {
 		i++;
 	});
 
+	Object.keys(processedOptions.uniforms).forEach(key => {
+		uniformsString += "uniform vec2 " + key + ";";
+		uniforms[key] = { value: processedOptions.uniforms[key] };
+	});
+
 	const fshader_complete = uniformsString + intro + fshader + outro;
 	var cachedMaterial = programCache[fshader_complete];
 	if(!cachedMaterial) {
@@ -122,7 +128,7 @@ export function shade2(texs, fshader, options) {
 	//uniforms.forEach(u => material.uniforms[u.
 	for (const [key, value] of Object.entries(uniforms)) {
 		material.uniforms[key] = value;
-	  }
+	}
 	var mesh = new THREE.Mesh( geometry, material );
 
 	mesh.position.set(.5, .5, 0);

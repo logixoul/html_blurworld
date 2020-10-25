@@ -4,6 +4,7 @@ import * as THREE from './lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js'
+import * as Input from './Input.js'
 
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 

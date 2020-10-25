@@ -67,9 +67,9 @@ function unpackTexture(t) {
 export function shade2(texs, fshader, options) {
 	options = options || {};
 	var processedOptions = {
-		disposeFirstInputTex: options.disposeFirstInputTex || true,
-		toScreen: options.toScreen || false,
-		scale: options.scale || new THREE.Vector2(1, 1),
+		disposeFirstInputTex: options.disposeFirstInputTex !== undefined ? options.disposeFirstInputTex : true,
+		toScreen: options.toScreen !== undefined ? options.toScreen : false,
+		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 	};
 	if(processedOptions.toScreen) processedOptions.disposeFirstInputTex = false;
 	
@@ -108,7 +108,8 @@ export function shade2(texs, fshader, options) {
 		uniforms: uniforms,
 		vertexShader: document.getElementById( 'vertexShader' ).textContent,
 		fragmentShader: fshader_complete,
-		side: THREE.DoubleSide
+		side: THREE.DoubleSide,
+		blending: THREE.NoBlending
 		} );
 	var mesh = new THREE.Mesh( geometry, material );
 

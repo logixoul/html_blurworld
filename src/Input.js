@@ -6,9 +6,9 @@ import * as util from './util.js';
 var scene = new THREE.Scene();
 
 var circleGeometry = new THREE.CircleBufferGeometry(5, 32);
+//var circleGeometry = new THREE.LineBufferGeometry(5, 32);
 var paintMaterial = new THREE.MeshBasicMaterial({
 	side: THREE.DoubleSide,
-	//color: '0xffffff'
 	});
 var circleMesh = new THREE.Mesh( circleGeometry, paintMaterial );
 
@@ -43,12 +43,20 @@ document.body.addEventListener("contextmenu", e => {
 	return false;
 });
 
+function unproject(x, y, tex) {
+	return new THREE.Vector2(x/4, tex.image.height - 1 - y/4);
+}
+
 document.addEventListener("mousemove", e => {
 	if(!isDrawing) {
 		return;
 	}
 
-	drawCircleToTex(globals.stateTex, new THREE.Vector2(e.x/4, globals.stateTex.texture.image.height - 1 - e.y/4));
-
-
+	paintMaterial.color = e.buttons & 1 ? new THREE.Color(1,1,1) : new THREE.Color(0, 0, 0);
+	const p1 = unproject(e.x, e.y, globals.stateTex.texture);
+	const p2 = unproject(e.x - e.movementX, e.y - e.movementY, globals.stateTex.texture);
+	for(var i = 0; i < 1; i+=1.0/p1.distanceTo(p2)) {
+		const p = p1.lerp(p2, i)
+		drawCircleToTex(globals.stateTex, p);
+	}
 });

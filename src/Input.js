@@ -32,6 +32,8 @@ var isDrawing = false;
 
 document.addEventListener("mousedown", e => {
 	isDrawing = true;
+
+	document.getElementById("intro").style.display = "none";
 });
 
 document.addEventListener("mouseup", e => {

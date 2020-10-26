@@ -44,14 +44,18 @@ function unproject(x, y, tex) {
 	return new THREE.Vector2(x/4, tex.image.height - 1 - y/4);
 }
 
+function drawLine(p1Projected, p2Projected) {
+	const p1 = unproject(p1Projected.x, p1Projected.y, globals.stateTex.texture);
+	const p2 = unproject(p2Projected.x, p2Projected.y, globals.stateTex.texture);
+	for(var i = 0; i < 1; i+=0.1/p1.distanceTo(p2)) {
+		const p = p1.lerp(p2, i)
+		drawCircleToTex(globals.stateTex, p);
+	}
+}
+
 document.addEventListener("mousemove", e => {
 	if((e.buttons & 1) != 0 || (e.buttons & 2) != 0) {
 		paintMaterial.color = e.buttons & 1 ? new THREE.Color(1,1,1) : new THREE.Color(0, 0, 0);
-		const p1 = unproject(e.x, e.y, globals.stateTex.texture);
-		const p2 = unproject(e.x - e.movementX, e.y - e.movementY, globals.stateTex.texture);
-		for(var i = 0; i < 1; i+=0.1/p1.distanceTo(p2)) {
-			const p = p1.lerp(p2, i)
-			drawCircleToTex(globals.stateTex, p);
-		}
+		drawLine(new THREE.Vector2(e.x, e.y), new THREE.Vector2(e.x - e.movementX, e.y - e.movementY));
 	}
 });

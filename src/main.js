@@ -10,11 +10,11 @@ import * as util from './util.js';
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
 function initStateTex() {
-	var img = new ImgProc.Image(window.innerWidth/4, window.innerHeight/4, Uint8Array);
+	var img = new ImgProc.Image(window.innerWidth/4, window.innerHeight/4, Float32Array)//Uint8Array);
 
-	img.forEach((x, y) => img.set(x, y, Math.random()*255));
+	img.forEach((x, y) => img.set(x, y, Math.random()));
 
-	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
+	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.FloatType);//THREE.UnsignedByteType);
 
 	globals.stateTex.generateMipmaps = false;
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
@@ -51,14 +51,22 @@ function animate() {
 		f = smoothstep(.5-fw, .5+fw, f);
 		_out.r = f;
 		`, {
-			scale: new THREE.Vector2(4, 4),
+		//	scale: new THREE.Vector2(4, 4),
 			disposeFirstInputTex: false
 		});
-	//var tex3 = extrude(tex2); tex2.dispose();
-	var tex3 = tex2;
+	var tex3 = ImgProc.extrude(tex2); tex2.dispose();
+	//var tex3 = tex2;
 	shade2([tex3], `
-		float f = fetch1();// * 0.5;
+		float f = fetch1() * 0.005;
+		float f2 = f;
+		float d = dFdy(f);
+		f = max(-d, 0.0f) * 100.0f;
 		_out.rgb = vec3(f);
+		if(d > 0.0f) _out.rgb/=1.0f+d*1000.0;
+		if(true||f2 > 0.0f) _out.rgb += vec3(0,.2,.5);
+		//_out.rgb = vec3(1,1,1);
+		if(d>0.0f)_out.rgb /= 1.0f+vec3(1.0f+d*100.0f);
+		_out.rgb /= _out.rgb + 1.0f;
 		`, {
 			toScreen: true
 		});

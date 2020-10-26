@@ -1,4 +1,5 @@
 import { shade2 } from "./shade.js";
+import * as util from "./util.js";
 
 export class Image {
 	data;
@@ -67,26 +68,25 @@ export function blurIterated(tex, iterations) {
 }
 
 export function extrude(inTex) {
-	const iters = 20;
-	var state = cloneTex(inTex);
+	const iters = 100;
+	var state = util.cloneTex(inTex);
 	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
 	for(var i = 0; i < iters; i++)
 	{
-		var state = ImgProc.blur(state);
-		state = shade2([state, inTex],
-			`float state = fetch1(tex1);
+		state = blur(state);
+		state = shade2([state, inTex], `
+			float state = fetch1(tex1);
 			float binary = fetch1(tex2);
 			state *= binary;
+			state += binary;
 			_out.r = state;`
-			, { disposeFirstInputTex: true }
 			);
-		state = shade2([state, inTex],`
+		/*state = shade2([state, inTex],`
 			float state = fetch1(tex1);
 			float binary = fetch1(tex2);
 			state += binary;
-			_out.r = state;`
-			, { disposeFirstInputTex: true }
-			);
+			_out.r = state*;`
+			);*/
 	}
 	return state;
 }

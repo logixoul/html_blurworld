@@ -1,5 +1,4 @@
 Hi prio:
-	Make it work on phones
 
 Lo prio:
 	remove the need for {disposeFirstInputTex: true}

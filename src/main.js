@@ -9,13 +9,20 @@ import * as util from './util.js';
 
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
-var img = new ImgProc.Image(window.innerWidth/4, window.innerHeight/4, Uint8Array);
+function initStateTex() {
+	var img = new ImgProc.Image(window.innerWidth/4, window.innerHeight/4, Uint8Array);
 
-img.forEach((x, y) => img.set(x, y, Math.random()*255));
+	img.forEach((x, y) => img.set(x, y, Math.random()*255));
 
-globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
+	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
 
-globals.stateTex.generateMipmaps = false;
+	globals.stateTex.generateMipmaps = false;
+	util.renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+initStateTex();
+
+document.defaultView.addEventListener("resize", initStateTex);
 
 function animate() {
 	//setInterval(animate, 100000);

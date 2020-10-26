@@ -28,16 +28,11 @@ function drawCircleToTex(tex, center) {
 	util.renderer.setRenderTarget(null);
 }
 
-var isDrawing = false;
-
 document.addEventListener("mousedown", e => {
-	isDrawing = true;
-
 	document.getElementById("intro").style.display = "none";
 });
 
 document.addEventListener("mouseup", e => {
-	isDrawing = false;
 });
 
 document.body.addEventListener("contextmenu", e => {
@@ -50,15 +45,13 @@ function unproject(x, y, tex) {
 }
 
 document.addEventListener("mousemove", e => {
-	if(!isDrawing) {
-		return;
-	}
-
-	paintMaterial.color = e.buttons & 1 ? new THREE.Color(1,1,1) : new THREE.Color(0, 0, 0);
-	const p1 = unproject(e.x, e.y, globals.stateTex.texture);
-	const p2 = unproject(e.x - e.movementX, e.y - e.movementY, globals.stateTex.texture);
-	for(var i = 0; i < 1; i+=1.0/p1.distanceTo(p2)) {
-		const p = p1.lerp(p2, i)
-		drawCircleToTex(globals.stateTex, p);
+	if((e.buttons & 1) != 0 || (e.buttons & 2) != 0) {
+		paintMaterial.color = e.buttons & 1 ? new THREE.Color(1,1,1) : new THREE.Color(0, 0, 0);
+		const p1 = unproject(e.x, e.y, globals.stateTex.texture);
+		const p2 = unproject(e.x - e.movementX, e.y - e.movementY, globals.stateTex.texture);
+		for(var i = 0; i < 1; i+=0.1/p1.distanceTo(p2)) {
+			const p = p1.lerp(p2, i)
+			drawCircleToTex(globals.stateTex, p);
+		}
 	}
 });

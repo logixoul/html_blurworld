@@ -57,11 +57,10 @@ function animate() {
 	var tex3 = ImgProc.extrude(tex2); tex2.dispose();
 	//var tex3 = tex2;
 	shade2([tex3], `
-		float f = fetch1();
-		float d = dFdy(f);
+		float d = dFdy(fetch1());
 		_out.rgb = vec3(0,.2,.5);
 		_out.rgb += vec3(max(-d, 0.0f)); // specular
-		if(d>0.0f)_out.rgb /= 1.0f+1.0f+d; // shadows
+		if(d>0.0f)_out.rgb /= 2.0f+d; // shadows
 		_out.rgb /= _out.rgb + 1.0f;
 		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2));
 		`, {

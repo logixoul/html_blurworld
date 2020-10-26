@@ -24,7 +24,8 @@ export class Image {
 	set(x, y, val) { this.data[x + y * this.width] = val; }
 };
 
-export function blur(tex) {
+export function blur(tex, width) {
+	if(width === undefined) width = .45;
 	tex = shade2([tex], `
 		float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
 		float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
@@ -39,7 +40,7 @@ export function blur(tex) {
 		}
 		_out.a = 1.0f;
 		`
-		, { uniforms: { width: .45 } }
+		, { uniforms: { width: width } }
 	);
 	tex = shade2([tex], `
 		float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
@@ -55,7 +56,7 @@ export function blur(tex) {
 		}
 		_out.a = 1.0f;
 	`
-	, { uniforms: { width: .45 } }
+	, { uniforms: { width: width } }
 	);
 	return tex;
 }
@@ -68,12 +69,12 @@ export function blurIterated(tex, iterations) {
 }
 
 export function extrude(inTex) {
-	const iters = 100;
+	const iters = 30;
 	var state = util.cloneTex(inTex);
 	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
 	for(var i = 0; i < iters; i++)
 	{
-		state = blur(state);
+		state = blur(state, 1.0);
 		state = shade2([state, inTex], `
 			float state = fetch1(tex1);
 			float binary = fetch1(tex2);

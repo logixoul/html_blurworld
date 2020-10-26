@@ -63,7 +63,7 @@ function animate() {
 		f = max(-d, 0.0f) * 100.0f;
 		_out.rgb = vec3(f);
 		if(true||f2 > 0.0f) _out.rgb += vec3(0,.2,.5);
-		if(d>0.0f)_out.rgb /= 1.0f+vec3(1.0f+d*100.0f);
+		if(d>0.0f)_out.rgb /= 1.0f+1.0f+d*100.0f;
 		_out.rgb /= _out.rgb + 1.0f;
 		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2));
 		`, {

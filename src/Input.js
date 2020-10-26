@@ -59,3 +59,15 @@ document.addEventListener("mousemove", e => {
 		drawLine(new THREE.Vector2(e.x, e.y), new THREE.Vector2(e.x - e.movementX, e.y - e.movementY));
 	}
 });
+
+var lastTouchPos;
+
+document.addEventListener("touchmove", e => {
+	var t = e.changedTouches[0];
+	var pos = new THREE.Vector2(t.clientX, t.clientY);
+	if(lastTouchPos === undefined)
+		lastTouchPos = pos;
+	paintMaterial.color = new THREE.Color(1,1,1);
+	drawLine(pos, lastTouchPos);
+	lastTouchPos = pos;
+});

@@ -66,6 +66,10 @@ document.addEventListener("touchstart", e => {
 	document.getElementById("intro").style.display = "none";
 });
 
+document.addEventListener("touchend", e => {
+	lastTouchPos = undefined;
+});
+
 document.addEventListener("touchmove", e => {
 	var t = e.changedTouches[0];
 	var pos = new THREE.Vector2(t.clientX, t.clientY);

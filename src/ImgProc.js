@@ -1,5 +1,6 @@
 import { shade2 } from "./shade.js";
 import * as util from "./util.js";
+import * as THREE from './lib/node_modules/three/src/Three.js';
 
 export class Image {
 	data;
@@ -68,26 +69,37 @@ export function blurIterated(tex, iterations) {
 	return tex;
 }
 
+function extrude_oneIteration(state, inTex) {
+	state = blur(state, 1.0);
+	state = shade2([state, inTex], `
+		float state = fetch1(tex1);
+		float binary = fetch1(tex2);
+		state *= binary;
+		state += binary;
+		_out.r = state;`
+		);
+	return state;
+}
+
 export function extrude(inTex) {
 	const iters = 30;
 	var state = util.cloneTex(inTex);
 	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
-	for(var i = 0; i < iters; i++)
+	for(let i = 0; i < iters; i++)
 	{
-		state = blur(state, 1.0);
+		state = extrude_oneIteration(state, inTex);
+	}
+	for(let i = 0; i < 2; i++) {
 		state = shade2([state, inTex], `
-			float state = fetch1(tex1);
-			float binary = fetch1(tex2);
-			state *= binary;
-			state += binary;
-			_out.r = state;`
-			);
-		/*state = shade2([state, inTex],`
-			float state = fetch1(tex1);
-			float binary = fetch1(tex2);
-			state += binary;
-			_out.r = state*;`
-			);*/
+			float f = fetch1(tex2);
+			float fw = fwidth(f);
+			f = smoothstep(.5-fw, .5+fw, f);
+			f = fetch1() * f;
+			_out.r = f;
+			`, {
+				scale: new THREE.Vector2(2, 2)
+			});
+		//state = extrude_oneIteration(state, inTex);
 	}
 	return state;
 }

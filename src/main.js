@@ -62,7 +62,7 @@ function animate() {
 		float r = fetch1(tex1, tc + vec2(tsize1.y, 0));
 		vec3 normal = vec3(2.0f*(r-l), 2.0f*(b-t), -4.0f);
 		normal = normalize(normal);
-		_out.rgb=normal;
+		_out.rgb=textureCube(tex2, normal).rgb;
 		`, {
 			toScreen: true
 		});

@@ -25,7 +25,7 @@ function initStateTex() {
 initStateTex();
 
 var cubemap = new THREE.CubeTextureLoader()
-	.setPath( '../Park3Med/' )
+	.setPath( 'Park3Med/' )
 	.load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg' ] );
 
 document.defaultView.addEventListener("resize", initStateTex);
@@ -55,12 +55,14 @@ function animate() {
 	var tex3 = ImgProc.extrude(tex2); tex2.dispose();
 	//var tex3 = tex2;
 	shade2([tex3, cubemap], `
-		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
-		_out.rgb = vec3(0,.2,.5);
-		_out.rgb += vec3(max(-d, 0.0f)); // specular
-		if(d>0.0f)_out.rgb /= 2.0f+d; // shadows
-		_out.rgb /= _out.rgb + 1.0f;
-		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2));
+		float here = fetch1();
+		float t = fetch1(tex1, tc - vec2(0, tsize1.y));
+		float b = fetch1(tex1, tc + vec2(0, tsize1.y));
+		float l = fetch1(tex1, tc - vec2(tsize1.x, 0));
+		float r = fetch1(tex1, tc + vec2(tsize1.y, 0));
+		vec3 normal = vec3(2.0f*(r-l), 2.0f*(b-t), -4.0f);
+		normal = normalize(normal);
+		_out.rgb=normal;
 		`, {
 			toScreen: true
 		});

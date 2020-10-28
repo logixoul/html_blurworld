@@ -13,7 +13,7 @@ function samplerNameMap(tex) {
 	if(tex.isCubeTexture)
 		return "samplerCube";
 	else
-		return sampler2D;
+		return "sampler2D";
 }
 	
 
@@ -109,7 +109,7 @@ export function shade2(texs, fshader, options) {
 	texs.forEach(tex => {
 		const name = "tex" + (i+1);
 		const tsizeName = "tsize" + (i+1);
-		uniformsString += "uniform ${samplerNameMap(tex)} " + name + ";";
+		uniformsString += `uniform ${samplerNameMap(tex)} ` + name + ";";
 		uniformsString += "uniform vec2 " + tsizeName + ";";
 		var texture = texs[i];
 		if(texture.isWebGLRenderTarget)

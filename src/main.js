@@ -10,7 +10,9 @@ import * as util from './util.js';
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
 function initStateTex() {
-	var img = new ImgProc.Image(window.innerWidth/4, window.innerHeight/4, Float32Array)//Uint8Array);
+	var img = new ImgProc.Image(
+		Math.trunc(window.innerWidth/4), Math.trunc(window.innerHeight/4),
+		Float32Array)//Uint8Array);
 
 	img.forEach((x, y) => img.set(x, y, Math.random()));
 

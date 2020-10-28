@@ -1,3 +1,7 @@
+DONE: disabled browser cache (via .htaccess)
+Idea: Texture bombing
+
+
 Hi prio:
 	
 

@@ -1,4 +1,3 @@
-DONE: disabled browser cache (via .htaccess)
 Idea: Texture bombing
 
 
@@ -6,3 +5,5 @@ Hi prio:
 	
 
 Lo prio:
+
+DONE: disabled browser cache (via .htaccess)

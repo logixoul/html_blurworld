@@ -103,3 +103,16 @@ export function extrude(inTex) {
 	}
 	return state;
 }
+
+export function zeroOutBorders(tex) {
+	return shade2([tex], `
+		float f = fetch1();
+		ivec2 fc=  ivec2(gl_FragCoord.xy);
+		ivec2 maxCoords = textureSize(tex1, 0) - ivec2(1, 1);
+		if(fc.x == 0 || fc.y == 0 || fc.x == maxCoords.x || fc.y == maxCoords.y) f = 0.0f;
+		_out.r = f;
+		`, {
+			disposeFirstInputTex: false
+		}
+	);
+}

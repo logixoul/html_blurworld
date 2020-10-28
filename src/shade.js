@@ -8,6 +8,13 @@ function mapType(value) {
 	else if(typeof value === 'number')
 		return 'float';
 }
+
+function samplerNameMap(tex) {
+	if(tex.isCubeTexture)
+		return "samplerCube";
+	else
+		return sampler2D;
+}
 	
 
 const intro = `
@@ -102,7 +109,7 @@ export function shade2(texs, fshader, options) {
 	texs.forEach(tex => {
 		const name = "tex" + (i+1);
 		const tsizeName = "tsize" + (i+1);
-		uniformsString += "uniform sampler2D " + name + ";";
+		uniformsString += "uniform ${samplerNameMap(tex)} " + name + ";";
 		uniformsString += "uniform vec2 " + tsizeName + ";";
 		var texture = texs[i];
 		if(texture.isWebGLRenderTarget)

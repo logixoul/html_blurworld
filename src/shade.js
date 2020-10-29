@@ -70,6 +70,7 @@ var geometry = new THREE.PlaneBufferGeometry();
 
 
 var programCache = { };
+var meshCache = { };
 
 export function shade2(texs, fshader, options) {
 	options = options || {};
@@ -120,6 +121,7 @@ export function shade2(texs, fshader, options) {
 
 	const fshader_complete = uniformsString + intro + fshader + outro;
 	var cachedMaterial = programCache[fshader_complete];
+	var cachedMesh = meshCache[fshader_complete];
 	if(!cachedMaterial) {
 		cachedMaterial = new THREE.ShaderMaterial( {
 			uniforms: uniforms,
@@ -128,15 +130,18 @@ export function shade2(texs, fshader, options) {
 			side: THREE.DoubleSide,
 			blending: THREE.NoBlending
 			} );
+		cachedMesh = new THREE.Mesh( geometry, cachedMaterial );
+
 		programCache[fshader_complete] = cachedMaterial;
+		meshCache[fshader_complete] = cachedMesh;
 	}
 	var material = cachedMaterial;
+	var mesh = cachedMesh;
 	//material.uniforms = { ...material.uniforms, ...uniforms };
 	//uniforms.forEach(u => material.uniforms[u.
 	for (const [key, value] of Object.entries(uniforms)) {
 		material.uniforms[key] = value;
 	}
-	var mesh = new THREE.Mesh( geometry, material );
 
 	mesh.position.set(.5, .5, 0);
 

@@ -28,17 +28,18 @@ document.defaultView.addEventListener("resize", initStateTex);
 
 // https://stackoverflow.com/questions/16432804/recording-fps-in-webgl
 const fpsElem = document.querySelector("#fps");
-let then = 0;
+let then = -1;
+let fpsSmoothed = 10;
 
 function animate(now) {
 	now *= 0.001; // convert to seconds
 	const deltaTime = now - then;
 	then = now;
 	const fps = 1 / deltaTime;
-	fpsElem.textContent = fps.toFixed(1);
-
-
-	//setInterval(animate, 100000);
+	fpsSmoothed += (fps - fpsSmoothed) * .1;
+	fpsElem.textContent = fpsSmoothed.toFixed(1);
+	
+	//setInterval(animate, 1000);
 	requestAnimationFrame( animate );
 	
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex);
@@ -55,7 +56,7 @@ function animate(now) {
 		f = smoothstep(.5-fw, .5+fw, f);
 		_out.r = f;
 		`, {
-		//	scale: new THREE.Vector2(4, 4),
+		//	scale: new THREE.Vector2(globals.scale, globals.scale),
 			disposeFirstInputTex: false
 		});
 	var tex3 = ImgProc.extrude(tex2); tex2.dispose();
@@ -72,4 +73,4 @@ function animate(now) {
 		});
 	tex3.dispose()
 }
-animate();
+requestAnimationFrame(animate);

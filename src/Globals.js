@@ -1,7 +1,7 @@
 export class Globals {
 	input;
 	stateTex;
-	scale = 4;
+	scale = 2;
 };
 
 export var globals = new Globals();

@@ -27,17 +27,16 @@ initStateTex();
 document.defaultView.addEventListener("resize", initStateTex);
 
 // https://stackoverflow.com/questions/16432804/recording-fps-in-webgl
-const fpsElem = document.querySelector("#fps");
-let then = -1;
-let fpsSmoothed = 10;
+const sfpElem = document.querySelector("#fps");
+let then = 0;
+let sfpSmoothed = -1;
 
 function animate(now) {
-	now *= 0.001; // convert to seconds
-	const deltaTime = now - then;
+	const sfp = now - then;
 	then = now;
-	const fps = 1 / deltaTime;
-	fpsSmoothed += (fps - fpsSmoothed) * .1;
-	fpsElem.textContent = fpsSmoothed.toFixed(1);
+	if(sfpSmoothed === -1) sfpSmoothed = sfp;
+	sfpSmoothed += (sfp - sfpSmoothed) * .1;
+	sfpElem.textContent = sfpSmoothed.toFixed(1) + "ms";
 	
 	//setInterval(animate, 1000);
 	requestAnimationFrame( animate );

@@ -41,7 +41,7 @@ document.body.addEventListener("contextmenu", e => {
 });
 
 function unproject(x, y, tex) {
-	return new THREE.Vector2(x/globals.scale, tex.image.height - 1 - y/globals.scale);
+	return new THREE.Vector2(x*globals.scale, tex.image.height - 1 - y*globals.scale);
 }
 
 function drawLine(p1Projected, p2Projected) {

@@ -10,8 +10,10 @@ import * as util from './util.js';
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
 function initStateTex() {
+	globals.scale = Math.sqrt(200*250) / Math.sqrt(window.innerWidth * window.innerHeight)
+
 	var img = new ImgProc.Image(
-		Math.trunc(window.innerWidth/globals.scale), Math.trunc(window.innerHeight/globals.scale),
+		Math.trunc(window.innerWidth*globals.scale), Math.trunc(window.innerHeight*globals.scale),
 		Float32Array)//Uint8Array);
 
 	img.forEach((x, y) => img.set(x, y, Math.random()));
@@ -55,7 +57,7 @@ function animate(now) {
 		f = smoothstep(.5-fw, .5+fw, f);
 		_out.r = f;
 		`, {
-		//	scale: new THREE.Vector2(globals.scale, globals.scale),
+		//	scale: new THREE.Vector2(1.0/globals.scale, 1.0/globals.scale),
 			disposeFirstInputTex: false
 		});
 	var tex3 = ImgProc.extrude(tex2); tex2.dispose();

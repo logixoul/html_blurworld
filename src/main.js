@@ -11,7 +11,7 @@ import * as util from './util.js';
 
 function initStateTex() {
 	var img = new ImgProc.Image(
-		Math.trunc(window.innerWidth/4), Math.trunc(window.innerHeight/4),
+		Math.trunc(window.innerWidth/globals.scale), Math.trunc(window.innerHeight/globals.scale),
 		Float32Array)//Uint8Array);
 
 	img.forEach((x, y) => img.set(x, y, Math.random()));
@@ -26,8 +26,18 @@ initStateTex();
 
 document.defaultView.addEventListener("resize", initStateTex);
 
+// https://stackoverflow.com/questions/16432804/recording-fps-in-webgl
+const fpsElem = document.querySelector("#fps");
+let then = 0;
 
-function animate() {
+function animate(now) {
+	now *= 0.001; // convert to seconds
+	const deltaTime = now - then;
+	then = now;
+	const fps = 1 / deltaTime;
+	fpsElem.textContent = fps.toFixed(1);
+
+
 	//setInterval(animate, 100000);
 	requestAnimationFrame( animate );
 	

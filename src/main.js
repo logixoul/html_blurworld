@@ -7,6 +7,8 @@ import { globals } from './Globals.js';
 import * as Input from './Input.js';
 import * as util from './util.js';
 
+import { HDRCubeTextureLoader } from './lib/node_modules/three/examples/jsm/loaders/HDRCubeTextureLoader.js';
+
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
 function initStateTex() {
@@ -24,9 +26,12 @@ function initStateTex() {
 
 initStateTex();
 
-var cubemap = new THREE.CubeTextureLoader()
-	.setPath( 'Park3Med/' )
-	.load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg' ] );
+var cubemap = new HDRCubeTextureLoader()
+	.setPath( 'pisaHDR/' )
+	.load( [ 'px.hdr', 'nx.hdr', 'py.hdr', 'ny.hdr', 'pz.hdr', 'nz.hdr' ] );
+
+cubemap.setMinFilter(THREE.LinearFilter);
+cubemap.setMagFilter(THREE.LinearFilter);
 
 document.defaultView.addEventListener("resize", initStateTex);
 
@@ -54,15 +59,17 @@ function animate() {
 		});
 	var tex3 = ImgProc.extrude(tex2); tex2.dispose();
 	//var tex3 = tex2;
+	tex3 = shade2([tex3], "_out.r = fetch1() * .05;");
 	shade2([tex3, cubemap], `
-		float here = fetch1();
 		float t = fetch1(tex1, tc - vec2(0, tsize1.y));
 		float b = fetch1(tex1, tc + vec2(0, tsize1.y));
 		float l = fetch1(tex1, tc - vec2(tsize1.x, 0));
 		float r = fetch1(tex1, tc + vec2(tsize1.y, 0));
 		vec3 normal = vec3(2.0f*(r-l), 2.0f*(b-t), -4.0f);
 		normal = normalize(normal);
-		_out.rgb=textureCube(tex2, normal).rgb;
+		_out.rgb=textureCube(tex2, normal).rgb*1.0f;
+		//float f = dot(_out.rgb, vec3(1.0/3.0));
+		//_out.rgb = vec3(f);
 		`, {
 			toScreen: true
 		});

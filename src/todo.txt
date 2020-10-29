@@ -2,7 +2,7 @@ Idea: Texture bombing
 
 
 Hi prio:
-	
+	- resolution on phones	
 
 Lo prio:
 

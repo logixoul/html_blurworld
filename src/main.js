@@ -10,7 +10,7 @@ import * as util from './util.js';
 //var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
 
 function initStateTex() {
-	globals.scale = Math.sqrt(200*250) / Math.sqrt(window.innerWidth * window.innerHeight)
+	globals.scale = Math.sqrt(200*150) / Math.sqrt(window.innerWidth * window.innerHeight)
 
 	var img = new ImgProc.Image(
 		Math.trunc(window.innerWidth*globals.scale), Math.trunc(window.innerHeight*globals.scale),
@@ -30,6 +30,7 @@ document.defaultView.addEventListener("resize", initStateTex);
 
 // https://stackoverflow.com/questions/16432804/recording-fps-in-webgl
 const sfpElem = document.querySelector("#fps");
+sfpElem.style.display="none";
 let then = 0;
 let sfpSmoothed = -1;
 

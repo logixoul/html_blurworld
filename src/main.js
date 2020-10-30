@@ -21,6 +21,10 @@ function initStateTex() {
 	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.FloatType);//THREE.UnsignedByteType);
 
 	globals.stateTex.generateMipmaps = false;
+
+	/*globals.stateTex = shade2([globals.stateTex],
+		`_out.r = fetch1();`, { itype: THREE.UnsignedByteType });*/
+
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
@@ -30,7 +34,7 @@ document.defaultView.addEventListener("resize", initStateTex);
 
 // https://stackoverflow.com/questions/16432804/recording-fps-in-webgl
 const sfpElem = document.querySelector("#fps");
-sfpElem.style.display="none";
+//sfpElem.style.display="none";
 let then = 0;
 let sfpSmoothed = -1;
 

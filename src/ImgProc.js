@@ -76,6 +76,7 @@ function extrude_oneIteration(state, inTex) {
 		float binary = fetch1(tex2);
 		state *= binary;
 		state += binary;
+		//state = (state+1.0f) * binary;
 		_out.r = state;`
 		);
 	return state;
@@ -84,6 +85,13 @@ function extrude_oneIteration(state, inTex) {
 export function extrude(inTex) {
 	const iters = 30;
 	var state = util.cloneTex(inTex);
+	/*state = shade2([state], `
+		_out.r = fetch1() * mul;
+		`,
+		{
+			uniforms: { mul: 1.0/255.0 }
+		}
+		);*/
 	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
 	for(let i = 0; i < iters; i++)
 	{

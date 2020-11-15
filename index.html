@@ -4,7 +4,9 @@
 		<meta charset="utf-8">
 		<title>Erosion</title>
 		<style>
-			body { margin: 0; overscroll-behavior: contain; }
+			body { margin: 0; overscroll-behavior: contain;
+				font-size: 3em;
+			}
 			canvas { display: block; }
 			#intro {
 				position: absolute;
@@ -23,6 +25,19 @@
 			#fps {
 				position: absolute;
 				color: white;
+				display: none;
+			}
+			#loadingScreen {
+				position: absolute;
+				top: 0px; bottom: 0px; left: 0px; right: 0px;
+				color: white;
+				background: black;
+			}
+			#loadingScreen div {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translateX(-50%) translateY(-50%);
 			}
 		</style>
 	</head>
@@ -39,5 +54,6 @@
 		</script>
 		<!--<script src="src/opencv.js" type="text/javascript"></script>-->
 		<script type="module" src="src/main.js"></script>
+		<div id="loadingScreen"><div>Loading...</div></div>
 	</body>
 </html>

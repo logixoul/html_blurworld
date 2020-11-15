@@ -26,6 +26,8 @@ function initStateTex() {
 		`_out.r = fetch1();`, { itype: THREE.UnsignedByteType });*/
 
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
+	
+	document.getElementById("loadingScreen").style.display = "none";
 }
 
 initStateTex();

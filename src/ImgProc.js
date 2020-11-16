@@ -94,6 +94,12 @@ export function extrude(inTex) {
 		}
 		);
 	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
+	/*var pingPong = [ ];
+	for(let i = 0; i < 2; i++) {
+		pingPong.push(
+			new THREE.WebGLRenderTarget(inTex.image.width, inTex.image.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: THREE.FloatType })
+		);
+	}*/
 	for(let i = 0; i < iters; i++)
 	{
 		state = extrude_oneIteration(state, inTex);

@@ -78,6 +78,11 @@ class TextureCacheKey {
 	width = 0;
 	height = 0;
 	itype = 0;
+	constructor(w, h, itype) {
+		this.width = w;
+		this.height = h;
+		this.itype = itype;
+	}
 	toString() {
 		return this.width + "," + this.height + "," + this.itype;
 	}
@@ -93,37 +98,51 @@ class TextureCache {
 	}
 
 	_allocTex(key) {
-		return new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype });
+		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype });
+		tex.lxUseCount = 1; // monkey-patching
+		return tex;
+	}
+
+	onNoLongerUsingTex(tex) {
+		tex.lxUseCount--;
+		if(tex.lxUseCount == 0) {
+			tex.dispose();
+		}
 	}
 
 	get(key)
 	{
+		var tex = this._allocTex(key);
+		//vec.push(tex);
+		this._setDefaults(tex);
+		return tex;
+
 		const keyString = key.toString();
 		const alreadyExists = this.cache.hasOwnProperty(keyString);
-		var it = cache.find(keyString);
 		if (!alreadyExists) {
-			const tex = allocTex(key);
+			const tex = this._allocTex(key);
 			const vec = [ tex ];
-			cache[keyString] = vec;
+			this.cache[keyString] = vec;
 			this._setDefaults(tex);
 			return tex;
 		}
 		else {
 			const vec = this.cache[keyString];
 			vec.forEach(tex => {
-				if(tex.useCount == 1) { // todo
+				if(tex.lxUseCount == 1) { // todo
 					this._setDefaults(tex);
+					tex.lxUseCount++;
 					return tex;
 				}
 			});
 
-			const tex = this._allocTex(key);
+			var tex = this._allocTex(key);
 			vec.push(tex);
 			this._setDefaults(tex);
 			return tex;
 		}
 	}
-};
+}
 
 var textureCache = new TextureCache();
 
@@ -144,7 +163,9 @@ export function shade2(texs, fshader, options) {
 	} else {
 		var size = new THREE.Vector2(util.unpackTex(texs[0]).image.width, util.unpackTex(texs[0]).image.height);
 		size = size.multiply(processedOptions.scale);
-		renderTarget = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: processedOptions.itype });
+		
+		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype);
+		renderTarget = textureCache.get(key);
 		renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}
 
@@ -212,7 +233,8 @@ export function shade2(texs, fshader, options) {
 	//material.dispose();
 
 	if(processedOptions.disposeFirstInputTex) {
-		texs[0].dispose();
+		textureCache.onNoLongerUsingTex(texs[0]);
+		//texs[0].dispose();
 	}
 	return renderTarget;
 }

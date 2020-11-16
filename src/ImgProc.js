@@ -85,13 +85,14 @@ function extrude_oneIteration(state, inTex) {
 export function extrude(inTex) {
 	const iters = 30;
 	var state = util.cloneTex(inTex);
-	/*state = shade2([state], `
+	state = shade2([state], `
 		_out.r = fetch1() * mul;
 		`,
 		{
-			uniforms: { mul: 1.0/255.0 }
+			uniforms: { mul: 1.0/255.0 },
+			itype: THREE.FloatType
 		}
-		);*/
+		);
 	//var orig = shade2(inTex, `_out = fetch4();`, { disposeFirstInputTex: false});
 	for(let i = 0; i < iters; i++)
 	{

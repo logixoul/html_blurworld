@@ -14,11 +14,14 @@ function initStateTex() {
 
 	var img = new ImgProc.Image(
 		Math.trunc(window.innerWidth*globals.scale), Math.trunc(window.innerHeight*globals.scale),
-		Float32Array)//Uint8Array);
+		//Float32Array
+		Uint8Array);
 
-	img.forEach((x, y) => img.set(x, y, Math.random()));
+	img.forEach((x, y) => img.set(x, y, Math.random()*255.0));
 
-	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat, THREE.FloatType);//THREE.UnsignedByteType);
+	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
+		//THREE.FloatType);
+		THREE.UnsignedByteType);
 
 	globals.stateTex.generateMipmaps = false;
 
@@ -45,7 +48,6 @@ function animate(now) {
 	then = now;
 	if(sfpSmoothed === -1) sfpSmoothed = sfp;
 	sfpSmoothed += (sfp - sfpSmoothed) * .1;
-	sfpElem.textContent = sfpSmoothed.toFixed(1) + "ms";
 	
 	//setInterval(animate, 1000);
 	requestAnimationFrame( animate );
@@ -82,3 +84,7 @@ function animate(now) {
 	tex3.dispose()
 }
 requestAnimationFrame(animate);
+
+setInterval(() => {
+	sfpElem.textContent = sfpSmoothed.toFixed(1) + "ms";
+}, 500);

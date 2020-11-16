@@ -72,6 +72,8 @@ var geometry = new THREE.PlaneBufferGeometry();
 var programCache = { };
 var meshCache = { };
 
+var scene = new THREE.Scene();
+
 export function shade2(texs, fshader, options) {
 	options = options || {};
 	var processedOptions = {
@@ -145,12 +147,14 @@ export function shade2(texs, fshader, options) {
 
 	mesh.position.set(.5, .5, 0);
 
-	var scene = new THREE.Scene();
+	
 
 	scene.add( mesh );
 
 	renderer.setRenderTarget(renderTarget);
 	renderer.render(scene, camera);
+
+	scene.remove( mesh );
 
 	//material.dispose();
 

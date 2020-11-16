@@ -74,6 +74,59 @@ var meshCache = { };
 
 var scene = new THREE.Scene();
 
+class TextureCacheKey {
+	width = 0;
+	height = 0;
+	itype = 0;
+	toString() {
+		return this.width + "," + this.height + "," + this.itype;
+	}
+}
+
+class TextureCache {
+	cache = [ ]
+
+	_setDefaults(tex) {
+		/*tex->setMinFilter(GL_LINEAR);
+		tex->setMagFilter(GL_LINEAR);
+		tex->setWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);*/
+	}
+
+	_allocTex(key) {
+		return new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype });
+	}
+
+	get(key)
+	{
+		const keyString = key.toString();
+		const alreadyExists = this.cache.hasOwnProperty(keyString);
+		var it = cache.find(keyString);
+		if (!alreadyExists) {
+			const tex = allocTex(key);
+			const vec = [ tex ];
+			cache[keyString] = vec;
+			this._setDefaults(tex);
+			return tex;
+		}
+		else {
+			const vec = this.cache[keyString];
+			vec.forEach(tex => {
+				if(tex.useCount == 1) { // todo
+					this._setDefaults(tex);
+					return tex;
+				}
+			});
+
+			const tex = this._allocTex(key);
+			vec.push(tex);
+			this._setDefaults(tex);
+			return tex;
+		}
+	}
+};
+
+var textureCache = new TextureCache();
+
 export function shade2(texs, fshader, options) {
 	options = options || {};
 	var processedOptions = {

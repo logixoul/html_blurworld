@@ -1,0 +1,8 @@
+Plan:
+	will do "var outTex = makeTex(...);" before every shade2 invocation, and will just pass it as an output texture to shade2, instead of allocating the output texture inside shade2.
+
+	FOR NOW, I WILL WORK WITHOUT an actual texture cache, just a dummy ("always allocate") one.
+
+==========================
+
+Requirements (for stackoverflow):

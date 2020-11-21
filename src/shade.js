@@ -7,6 +7,7 @@ function mapType(value) {
 		return 'vec2';
 	else if(typeof value === 'number')
 		return 'float';
+	else throw "";
 }
 	
 
@@ -89,7 +90,7 @@ class TextureCacheKey {
 }
 
 class TextureCache {
-	cache = [ ]
+	cache = { }
 
 	_setDefaults(tex) {
 		/*tex->setMinFilter(GL_LINEAR);
@@ -144,18 +145,24 @@ class TextureCache {
 	}
 }
 
-var textureCache = new TextureCache();
+export var textureCache = new TextureCache();
 
 export function shade2(texs, fshader, options) {
 	options = options || {};
+	//if(options.releaseFirstInputTex === undefined)
+	//	throw "For now, you have to specify this manually, always";
 	var processedOptions = {
-		disposeFirstInputTex: options.disposeFirstInputTex !== undefined ? options.disposeFirstInputTex : true,
+		releaseFirstInputTex: options.releaseFirstInputTex !== undefined ? options.releaseFirstInputTex : true,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 		itype: options.itype !== undefined ? options.itype : util.unpackTex(texs[0]).type,
-		uniforms: options.uniforms || { }
+		uniforms: options.uniforms || { },
+		//outputWrapper: options.outputWrapper
 	};
-	if(processedOptions.toScreen) processedOptions.disposeFirstInputTex = false;
+	/*if(processedOptions.outputWrapper === undefined) {
+		throw "error";
+	}*/
+	//if(processedOptions.toScreen) processedOptions.releaseFirstInputTex = false;
 
 	var renderTarget;
 	if(options.toScreen) {
@@ -232,9 +239,9 @@ export function shade2(texs, fshader, options) {
 
 	//material.dispose();
 
-	if(processedOptions.disposeFirstInputTex) {
-		textureCache.onNoLongerUsingTex(texs[0]);
-		//texs[0].dispose();
+	if(processedOptions.releaseFirstInputTex) {
+		//textureCache.onNoLongerUsingTex(texs[0]);
+		texs[0].dispose();
 	}
 	return renderTarget;
 }

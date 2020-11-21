@@ -39,7 +39,7 @@ export function drawTexToScreen(tex) {
 			mousePos: new THREE.Vector2(e.x/4, globals.stateTex.texture.image.height - 1 - e.y/4),
 			newVal: new THREE.Vector2(e.buttons & 1 ? 1 : 0, 0),
 		},
-		disposeFirstInputTex: false
+		releaseFirstInputTex: false
 	});*/
 
 

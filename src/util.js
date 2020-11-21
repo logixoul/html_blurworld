@@ -8,10 +8,6 @@ export function cloneTex(inTex) {
 	return shade2([inTex], `_out = fetch4();`, { releaseFirstInputTex: false});
 }
 
-export function makeTex(w, h, itype) {
-	return textureCache.get(new TextureCacheKey(w, h, itype));
-}
-
 export function unpackTex(t) {
 	if(t.isWebGLRenderTarget)
 		return t.texture;

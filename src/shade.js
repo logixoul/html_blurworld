@@ -113,14 +113,15 @@ class TextureCache {
 
 	get(key)
 	{
-		var tex = this._allocTex(key);
+		/*var tex = this._allocTex(key);
 		//vec.push(tex);
 		this._setDefaults(tex);
-		return tex;
+		return tex;*/
 
 		const keyString = key.toString();
 		const alreadyExists = this.cache.hasOwnProperty(keyString);
 		if (!alreadyExists) {
+			console.log("alreadyExists = " + alreadyExists);
 			const tex = this._allocTex(key);
 			const vec = [ tex ];
 			this.cache[keyString] = vec;
@@ -128,7 +129,10 @@ class TextureCache {
 			return tex;
 		}
 		else {
+			this.cache[keyString] = this.cache[keyString].filter(tex => tex.lxUseCount == 0);
+
 			const vec = this.cache[keyString];
+			
 			vec.forEach(tex => {
 				if(tex.lxUseCount == 1) { // todo
 					this._setDefaults(tex);
@@ -152,17 +156,15 @@ export function shade2(texs, fshader, options) {
 	//if(options.releaseFirstInputTex === undefined)
 	//	throw "For now, you have to specify this manually, always";
 	var processedOptions = {
-		releaseFirstInputTex: options.releaseFirstInputTex !== undefined ? options.releaseFirstInputTex : true,
+		releaseFirstInputTex: options.releaseFirstInputTex,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 		itype: options.itype !== undefined ? options.itype : util.unpackTex(texs[0]).type,
 		uniforms: options.uniforms || { },
-		//outputWrapper: options.outputWrapper
 	};
-	/*if(processedOptions.outputWrapper === undefined) {
+	if(processedOptions.releaseFirstInputTex === undefined) {
 		throw "error";
-	}*/
-	//if(processedOptions.toScreen) processedOptions.releaseFirstInputTex = false;
+	}
 
 	var renderTarget;
 	if(options.toScreen) {
@@ -173,7 +175,7 @@ export function shade2(texs, fshader, options) {
 		
 		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype);
 		renderTarget = textureCache.get(key);
-		renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
+		//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}
 
 	var uniforms = {
@@ -240,8 +242,8 @@ export function shade2(texs, fshader, options) {
 	//material.dispose();
 
 	if(processedOptions.releaseFirstInputTex) {
-		//textureCache.onNoLongerUsingTex(texs[0]);
-		texs[0].dispose();
+		textureCache.onNoLongerUsingTex(texs[0]);
+		//texs[0].dispose();
 	}
 	return renderTarget;
 }

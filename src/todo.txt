@@ -11,3 +11,5 @@ Lo prio:
 
 =====================
 
+TODO for TypeScript conversion:
+	Make all function parameters declare their types.

@@ -4,8 +4,11 @@
 	  "allowJs": true,
 	  "target": "es6",
 	  "noEmitOnError": true,
-	  "noImplicitAny": true,
-	  "strictNullChecks": true
+	  /*"noImplicitAny": true,
+	  "strictNullChecks": true,
+	  "noImplicitReturns": true,
+	  "noFallthroughCasesInSwitch": true*/
+	  "strict": true
 	},
 	"include": ["./src/**/*"]
   }

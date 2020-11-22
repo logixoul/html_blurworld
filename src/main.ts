@@ -1,5 +1,3 @@
-// https://threejs.org/docs/index.html#api/en/materials/RawShaderMaterial
-
 import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import * as Shade from './shade.js';
@@ -17,7 +15,7 @@ function initStateTex() {
 		Float32Array);
 		//Uint8Array);
 
-	img.forEach((x, y) => img.set(x, y, Math.random()));
+	img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
 	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
 		THREE.FloatType);
@@ -30,12 +28,12 @@ function initStateTex() {
 
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
 	
-	document.getElementById("loadingScreen").style.display = "none";
+	document.getElementById("loadingScreen")!.style.display = "none";
 }
 
 initStateTex();
 
-document.defaultView.addEventListener("resize", initStateTex);
+document.defaultView!.addEventListener("resize", initStateTex);
 
 // https://stackoverflow.com/questions/16432804/recording-fps-in-webgl
 const sfpElem = document.querySelector("#fps");
@@ -43,7 +41,7 @@ const sfpElem = document.querySelector("#fps");
 let then = 0;
 let sfpSmoothed = -1;
 
-function animate(now) {
+function animate(now: DOMHighResTimeStamp) {
 	const sfp = now - then;
 	then = now;
 	if(sfpSmoothed === -1) sfpSmoothed = sfp;
@@ -85,5 +83,5 @@ function animate(now) {
 requestAnimationFrame(animate);
 
 setInterval(() => {
-	sfpElem.textContent = sfpSmoothed.toFixed(1) + "ms";
+	sfpElem!.textContent = sfpSmoothed.toFixed(1) + "ms";
 }, 500);

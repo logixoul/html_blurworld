@@ -1,6 +1,6 @@
 // https://threejs.org/docs/index.html#api/en/materials/RawShaderMaterial
 
-import * as THREE from './lib/node_modules/three/src/Three.js';
+import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import * as Shade from './shade.js';
 import * as ImgProc from './ImgProc.js';
@@ -9,14 +9,8 @@ import * as Input from './Input.js';
 import * as util from './util.js';
 import { Image } from "./Image.js";
 
-//var imgcv = new cv.Mat(window.innerWidth, window.innerHeight, cv.CV_32F);
-
 function initStateTex() {
-	//globals.textureRegistry = { }
-
-	//var outputWrapper = { }
-
-	globals.scale = Math.sqrt(200*150) / Math.sqrt(window.innerWidth * window.innerHeight)
+	globals.scale = Math.sqrt(20*15) / Math.sqrt(window.innerWidth * window.innerHeight)
 	
 	var img = new Image(
 		Math.trunc(window.innerWidth*globals.scale), Math.trunc(window.innerHeight*globals.scale),

@@ -1,4 +1,4 @@
-import * as THREE from './lib/node_modules/three/src/Three.js';
+import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { renderer } from './util.js';
 import * as util from './util.js';
 
@@ -98,16 +98,25 @@ class TextureCache {
 		tex->setWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);*/
 	}
 
+	numTexturesDbg = 0;
+
 	_allocTex(key) {
+		console.log("allocating texture" + Date.now());
 		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype });
 		tex.lxUseCount = 1; // monkey-patching
+		tex.lxKey = key; // monkey-patching
+		this.numTexturesDbg++;
 		return tex;
 	}
 
 	onNoLongerUsingTex(tex) {
 		tex.lxUseCount--;
 		if(tex.lxUseCount == 0) {
+			this.cache[tex.lxKey.toString()] = this.cache[tex.lxKey.toString()].filter(t => t !== tex);
+			
 			tex.dispose();
+			this.numTexturesDbg--;
+			console.log("disposing texture" + Date.now());
 		}
 	}
 
@@ -117,6 +126,7 @@ class TextureCache {
 		//vec.push(tex);
 		this._setDefaults(tex);
 		return tex;*/
+		console.log("numTexturesDbg = " + this.numTexturesDbg);
 
 		const keyString = key.toString();
 		const alreadyExists = this.cache.hasOwnProperty(keyString);
@@ -129,12 +139,11 @@ class TextureCache {
 			return tex;
 		}
 		else {
-			this.cache[keyString] = this.cache[keyString].filter(tex => tex.lxUseCount == 0);
-
 			const vec = this.cache[keyString];
 			
 			vec.forEach(tex => {
 				if(tex.lxUseCount == 1) { // todo
+					console.log("reusing" + Date.now());
 					this._setDefaults(tex);
 					tex.lxUseCount++;
 					return tex;

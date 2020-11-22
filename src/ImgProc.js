@@ -1,6 +1,6 @@
-import { shade2 } from "./shade.js";
+import { shade2, textureCache } from "./shade.js";
 import * as util from "./util.js";
-import * as THREE from './lib/node_modules/three/src/Three.js';
+import * as THREE from '../lib/node_modules/three/src/Three.js';
 
 export function blur(tex, width, releaseFirstInputTex) {
 	if(width === undefined) width = .45;
@@ -91,7 +91,8 @@ export function extrude(inTex, releaseFirstInputTex) {
 		//state = extrude_oneIteration(state, inTex);
 	}
 	if(releaseFirstInputTex) {
-		inTex.dispose();
+		textureCache.onNoLongerUsingTex(inTex);
+		//inTex.dispose();
 	}
 	return state;
 }

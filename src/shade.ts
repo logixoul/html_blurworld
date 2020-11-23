@@ -1,14 +1,56 @@
 import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { renderer } from './util.js';
 import * as util from './util.js';
+import { SafeMap } from './SafeMap.js';
 
-function mapType(value) {
-	if(value.isVector2)
+export namespace lx {
+	export class Texture {
+		private actualTextureObj: THREE.Texture;
+		private renderTargetObj?: THREE.WebGLRenderTarget;
+		get(): THREE.Texture {
+			return this.actualTextureObj;
+		}
+		constructor(param : (THREE.Texture | THREE.WebGLRenderTarget)) {
+			var asTex = param as THREE.Texture;
+			var asRt = param as THREE.WebGLRenderTarget;
+			if(param instanceof THREE.Texture) {
+				this.actualTextureObj = asTex;
+			} else if(param instanceof THREE.WebGLRenderTarget) {
+				this.actualTextureObj = asRt.texture;
+				this.renderTargetObj = asRt;
+			} else {
+				throw "error";
+			}
+		}
+		toString() {
+			return this.actualTextureObj.id.toString();
+		}
+		dispose() {
+			if(this.renderTargetObj !== undefined) {
+				this.renderTargetObj.dispose();
+			} else {
+				this.actualTextureObj.dispose();
+			}
+		}
+	}
+}
+
+function mapType(value: THREE.Vector2 | number) {
+	if(value as THREE.Vector2)
 		return 'vec2';
-	else if(typeof value === 'number')
+	else if(value as number)
 		return 'float';
 	else throw "";
 }
+
+const vertexShader : string = `
+varying vec2 vUv;
+
+void main() {
+	vUv = uv;
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+`;
 	
 
 const intro = `
@@ -70,29 +112,42 @@ var geometry = new THREE.PlaneBufferGeometry();
 
 
 
-var programCache = { };
-var meshCache = { };
+type ProgramCache = { [key: string]: THREE.ShaderMaterial };
+type MeshCache = { [key: string]: THREE.Mesh };
+var programCache : ProgramCache = { };
+var meshCache : MeshCache = { };
 
 var scene = new THREE.Scene();
 
 class TextureCacheKey {
-	width = 0;
-	height = 0;
-	itype = 0;
-	constructor(w, h, itype) {
+	width : number = 0;
+	height : number = 0;
+	itype : THREE.TextureDataType = 0;
+	constructor(w : number, h : number, itype : THREE.TextureDataType) {
 		this.width = w;
 		this.height = h;
 		this.itype = itype;
 	}
-	toString() {
+	toString() : string {
 		return this.width + "," + this.height + "," + this.itype;
+		//return JSON.stringify(this);
+	}
+}
+
+class TextureInfo {
+	useCount: number = 0;
+	key: TextureCacheKey;
+
+	constructor(key : TextureCacheKey) {
+		this.key = key;
 	}
 }
 
 class TextureCache {
-	cache = { }
+	cache = new SafeMap<string, Array<lx.Texture>>(); // key obtained by TextureCacheKey.toString()
+	infos = new SafeMap<string, TextureInfo>(); // key obtained by lx.Texture.toString()
 
-	_setDefaults(tex) {
+	_setDefaults(tex : THREE.Texture) {
 		/*tex->setMinFilter(GL_LINEAR);
 		tex->setMagFilter(GL_LINEAR);
 		tex->setWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);*/
@@ -100,19 +155,26 @@ class TextureCache {
 
 	numTexturesDbg = 0;
 
-	_allocTex(key) {
+	_allocTex(key : TextureCacheKey) : lx.Texture {
 		console.log("allocating texture" + Date.now());
 		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype });
-		tex.lxUseCount = 1; // monkey-patching
-		tex.lxKey = key; // monkey-patching
+		var texWrapper = new lx.Texture(tex);
+
+		var keyString : string = texWrapper.toString();
+		this.infos.set(keyString, new TextureInfo(key));
+		this.infos.safeGet(keyString).useCount = 1;
+
 		this.numTexturesDbg++;
-		return tex;
+		return texWrapper;
 	}
 
-	onNoLongerUsingTex(tex) {
-		tex.lxUseCount--;
-		if(tex.lxUseCount == 0) {
-			this.cache[tex.lxKey.toString()] = this.cache[tex.lxKey.toString()].filter(t => t !== tex);
+	onNoLongerUsingTex(tex : lx.Texture) {
+		var info : TextureInfo = this.infos.safeGet(tex.toString());
+		info.useCount--;
+		if(info.useCount == 0) {
+			this.cache.set(info.key.toString(),
+				this.cache.safeGet(info.key.toString()).filter((t : lx.Texture) => t !== tex)
+			);
 			
 			tex.dispose();
 			this.numTexturesDbg--;
@@ -120,7 +182,7 @@ class TextureCache {
 		}
 	}
 
-	get(key)
+	get(key : TextureCacheKey)
 	{
 		/*var tex = this._allocTex(key);
 		//vec.push(tex);
@@ -128,31 +190,32 @@ class TextureCache {
 		return tex;*/
 		console.log("numTexturesDbg = " + this.numTexturesDbg);
 
-		const keyString = key.toString();
-		const alreadyExists = this.cache.hasOwnProperty(keyString);
+		var keyString : string = key.toString();
+		const alreadyExists = this.cache.has(keyString);
 		if (!alreadyExists) {
 			console.log("alreadyExists = " + alreadyExists);
 			const tex = this._allocTex(key);
 			const vec = [ tex ];
-			this.cache[keyString] = vec;
-			this._setDefaults(tex);
+			this.cache.set(keyString, vec);
+			this._setDefaults(tex.get());
 			return tex;
 		}
 		else {
-			const vec = this.cache[keyString];
+			const vec = this.cache.safeGet(keyString);
 			
-			vec.forEach(tex => {
-				if(tex.lxUseCount == 1) { // todo
+			vec.forEach((tex : lx.Texture) => {
+				var texInfo = this.infos.safeGet(tex.toString());
+				if(texInfo.useCount == 1) {
 					console.log("reusing" + Date.now());
-					this._setDefaults(tex);
-					tex.lxUseCount++;
+					this._setDefaults(tex.get());
+					texInfo.useCount++;
 					return tex;
 				}
 			});
 
 			var tex = this._allocTex(key);
 			vec.push(tex);
-			this._setDefaults(tex);
+			this._setDefaults(tex.get());
 			return tex;
 		}
 	}
@@ -160,7 +223,17 @@ class TextureCache {
 
 export var textureCache = new TextureCache();
 
-export function shade2(texs, fshader, options) {
+type UniformMap = { [uniform: string]: THREE.IUniform };
+
+interface ShadeOpts {
+	releaseFirstInputTex: boolean;
+	toScreen?: boolean;
+	scale?: THREE.Vector2;
+	itype?: THREE.TextureDataType;
+	uniforms?: UniformMap,
+}
+
+export function shade2(texs : Array<lx.Texture>, fshader : string, options : ShadeOpts) {
 	options = options || {};
 	//if(options.releaseFirstInputTex === undefined)
 	//	throw "For now, you have to specify this manually, always";
@@ -171,9 +244,9 @@ export function shade2(texs, fshader, options) {
 		itype: options.itype !== undefined ? options.itype : util.unpackTex(texs[0]).type,
 		uniforms: options.uniforms || { },
 	};
-	if(processedOptions.releaseFirstInputTex === undefined) {
+	/*if(processedOptions.releaseFirstInputTex === undefined) {
 		throw "error";
-	}
+	}*/
 
 	var renderTarget;
 	if(options.toScreen) {
@@ -187,8 +260,10 @@ export function shade2(texs, fshader, options) {
 		//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}
 
-	var uniforms = {
-		time: { value: 0.0 }
+	var params : THREE.ShaderMaterialParameters = {
+		uniforms: {
+			time: { value: 0.0 }
+		}
 	};
 
 	var uniformsString = "";
@@ -199,18 +274,16 @@ export function shade2(texs, fshader, options) {
 		const tsizeName = "tsize" + (i+1);
 		uniformsString += "uniform sampler2D " + name + ";";
 		uniformsString += "uniform vec2 " + tsizeName + ";";
-		var texture = texs[i];
-		if(texture.isWebGLRenderTarget)
-			texture = texture.texture;
-		uniforms[name] = { value: texture };
-		uniforms[tsizeName] = { value: new THREE.Vector2(1.0 / texture.image.width, 1.0 / texture.image.height) };
+		var texture : THREE.Texture = texs[i].get();
+		params.uniforms![name] = { value: texture };
+		params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texture.image.width, 1.0 / texture.image.height) };
 		i++;
 	});
 
 	Object.keys(processedOptions.uniforms).forEach(key => {
 		const value=processedOptions.uniforms[key];
-		uniformsString += "uniform " + mapType(value) + " " + key + ";";
-		uniforms[key] = { value: value };
+		uniformsString += "uniform " + mapType(value.value) + " " + key + ";";
+		params.uniforms![key] = { value: value };
 	});
 
 	const fshader_complete = uniformsString + intro + fshader + outro;
@@ -218,8 +291,8 @@ export function shade2(texs, fshader, options) {
 	var cachedMesh = meshCache[fshader_complete];
 	if(!cachedMaterial) {
 		cachedMaterial = new THREE.ShaderMaterial( {
-			uniforms: uniforms,
-			vertexShader: document.getElementById( 'vertexShader' ).textContent,
+			uniforms: params.uniforms,
+			vertexShader: vertexShader,
 			fragmentShader: fshader_complete,
 			side: THREE.DoubleSide,
 			blending: THREE.NoBlending
@@ -233,7 +306,7 @@ export function shade2(texs, fshader, options) {
 	var mesh = cachedMesh;
 	//material.uniforms = { ...material.uniforms, ...uniforms };
 	//uniforms.forEach(u => material.uniforms[u.
-	for (const [key, value] of Object.entries(uniforms)) {
+	for (const [key, value] of Object.entries(params.uniforms!)) { // todo: is the "!" necessary?
 		material.uniforms[key] = value;
 	}
 

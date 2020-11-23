@@ -1,4 +1,4 @@
-import { shade2, textureCache } from "./shade.js";
+import { shade2, textureCache, lx } from "./shade.js";
 import * as util from "./util.js";
 import * as THREE from '../lib/node_modules/three/src/Three.js';
 

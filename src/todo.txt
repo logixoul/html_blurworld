@@ -6,6 +6,8 @@ Hi prio:
 Lo prio:
 	SEE IF IT's SAFE TO TARGET es6 in tsconfig.json.	
 	https://threejs.org/docs/index.html#api/en/materials/RawShaderMaterial
+	
+	REDUCE THE NUMBER of ! operators in my TS code
 
 
 

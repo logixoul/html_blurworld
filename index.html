@@ -44,14 +44,6 @@
 	<body>
 		<div id="intro">Use the mouse buttons to draw</div>
 		<div id="fps"></div>
-		<script id="vertexShader" type="x-shader/x-vertex">
-			varying vec2 vUv;
-
-			void main() {
-				vUv = uv;
-				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-			}
-		</script>
 		<!--<script src="src/opencv.js" type="text/javascript"></script>-->
 		<script type="module" src="built/main.js"></script>
 		<div id="loadingScreen"><div>Loading...</div></div>

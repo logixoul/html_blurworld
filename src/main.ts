@@ -39,8 +39,8 @@ const framerateCounter = new FramerateCounter();
 
 function animate(now: DOMHighResTimeStamp) {
 	framerateCounter.update(now);
-	//setInterval(animate, 1000);
-	requestAnimationFrame( animate );
+	setInterval(animate, 1000);
+	//requestAnimationFrame( animate );
 	
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 
@@ -60,7 +60,7 @@ function animate(now: DOMHighResTimeStamp) {
 			releaseFirstInputTex: false
 		});
 	tex2 = ImgProc.extrude(tex2, /*releaseFirstInputTex=*/ true);
-	shade2([tex2], `
+	shade2([tex2!], ` // todo: rm the ! when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
 		_out.rgb = vec3(0,.2,.5);
 		_out.rgb += vec3(max(-d, 0.0f)); // specular

@@ -3,6 +3,8 @@ import { renderer } from './util.js';
 import * as util from './util.js';
 import { SafeMap } from './SafeMap.js';
 
+type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | lx.Texture);
+
 export namespace lx {
 	export class Texture {
 		private actualTextureObj: THREE.Texture;
@@ -10,7 +12,12 @@ export namespace lx {
 		get(): THREE.Texture {
 			return this.actualTextureObj;
 		}
-		constructor(param : (THREE.Texture | THREE.WebGLRenderTarget)) {
+		getRenderTarget(): THREE.WebGLRenderTarget {
+			if(this.renderTargetObj === undefined)
+				throw "error";
+			return this.renderTargetObj;
+		}
+		constructor(param : TextureUnion) {
 			var asTex = param as THREE.Texture;
 			var asRt = param as THREE.WebGLRenderTarget;
 			if(param instanceof THREE.Texture) {
@@ -18,6 +25,10 @@ export namespace lx {
 			} else if(param instanceof THREE.WebGLRenderTarget) {
 				this.actualTextureObj = asRt.texture;
 				this.renderTargetObj = asRt;
+			} else if(param instanceof lx.Texture) {
+				var asLxTex = param as lx.Texture;
+				this.actualTextureObj = asLxTex.actualTextureObj;
+				this.renderTargetObj = asLxTex.renderTargetObj;
 			} else {
 				throw "error";
 			}
@@ -35,12 +46,12 @@ export namespace lx {
 	}
 }
 
-function mapType(value: THREE.Vector2 | number) {
-	if(value as THREE.Vector2)
+function mapType(value: any) {
+	if(value instanceof THREE.Vector2)
 		return 'vec2';
-	else if(value as number)
+	else if(typeof value === "number")
 		return 'float';
-	else throw "";
+	else throw "error";
 }
 
 const vertexShader : string = `
@@ -169,9 +180,16 @@ class TextureCache {
 	}
 
 	onNoLongerUsingTex(tex : lx.Texture) {
-		var info : TextureInfo = this.infos.safeGet(tex.toString());
+		var info : TextureInfo | undefined = this.infos.get(tex.toString());
+		if(info === undefined) {
+			// `tex` has not been created by TextureCache and is not managed by it.
+			// Since `onNoLongerUsingTex()` has been called, the user tells us that he no longer needs that texture so
+			// it's safe to just dispose it.
+			tex.dispose();
+			return;
+		}
 		info.useCount--;
-		if(info.useCount == 0) {
+		if(info.useCount === 0) {
 			this.cache.set(info.key.toString(),
 				this.cache.safeGet(info.key.toString()).filter((t : lx.Texture) => t !== tex)
 			);
@@ -233,7 +251,10 @@ interface ShadeOpts {
 	uniforms?: UniformMap,
 }
 
-export function shade2(texs : Array<lx.Texture>, fshader : string, options : ShadeOpts) {
+//export function shade2(texs : Array<lx.Texture>, fshader : string, options : ShadeOpts) {
+export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) {
+	const wrappedTexs = texs.map(t => new lx.Texture(t));
+
 	options = options || {};
 	//if(options.releaseFirstInputTex === undefined)
 	//	throw "For now, you have to specify this manually, always";
@@ -241,7 +262,7 @@ export function shade2(texs : Array<lx.Texture>, fshader : string, options : Sha
 		releaseFirstInputTex: options.releaseFirstInputTex,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
-		itype: options.itype !== undefined ? options.itype : util.unpackTex(texs[0]).type,
+		itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
 		uniforms: options.uniforms || { },
 	};
 	/*if(processedOptions.releaseFirstInputTex === undefined) {
@@ -252,7 +273,7 @@ export function shade2(texs : Array<lx.Texture>, fshader : string, options : Sha
 	if(options.toScreen) {
 		renderTarget = null;
 	} else {
-		var size = new THREE.Vector2(util.unpackTex(texs[0]).image.width, util.unpackTex(texs[0]).image.height);
+		var size = new THREE.Vector2(wrappedTexs[0].get().image.width, wrappedTexs[0].get().image.height);
 		size = size.multiply(processedOptions.scale);
 		
 		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype);
@@ -265,6 +286,7 @@ export function shade2(texs : Array<lx.Texture>, fshader : string, options : Sha
 			time: { value: 0.0 }
 		}
 	};
+	
 
 	var uniformsString = "";
 
@@ -274,15 +296,15 @@ export function shade2(texs : Array<lx.Texture>, fshader : string, options : Sha
 		const tsizeName = "tsize" + (i+1);
 		uniformsString += "uniform sampler2D " + name + ";";
 		uniformsString += "uniform vec2 " + tsizeName + ";";
-		var texture : THREE.Texture = texs[i].get();
+		var texture : THREE.Texture = wrappedTexs[i].get();
 		params.uniforms![name] = { value: texture };
 		params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texture.image.width, 1.0 / texture.image.height) };
 		i++;
 	});
 
 	Object.keys(processedOptions.uniforms).forEach(key => {
-		const value=processedOptions.uniforms[key];
-		uniformsString += "uniform " + mapType(value.value) + " " + key + ";";
+		var value=processedOptions.uniforms[key];
+		uniformsString += "uniform " + mapType(value) + " " + key + ";";
 		params.uniforms![key] = { value: value };
 	});
 
@@ -316,7 +338,7 @@ export function shade2(texs : Array<lx.Texture>, fshader : string, options : Sha
 
 	scene.add( mesh );
 
-	renderer.setRenderTarget(renderTarget);
+	renderer.setRenderTarget(renderTarget?.getRenderTarget() ?? null);
 	renderer.render(scene, camera);
 
 	scene.remove( mesh );
@@ -324,7 +346,7 @@ export function shade2(texs : Array<lx.Texture>, fshader : string, options : Sha
 	//material.dispose();
 
 	if(processedOptions.releaseFirstInputTex) {
-		textureCache.onNoLongerUsingTex(texs[0]);
+		textureCache.onNoLongerUsingTex(wrappedTexs[0]);
 		//texs[0].dispose();
 	}
 	return renderTarget;

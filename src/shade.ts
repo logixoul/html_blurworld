@@ -167,7 +167,7 @@ class TextureCache {
 	numTexturesDbg = 0;
 
 	_allocTex(key : TextureCacheKey) : lx.Texture {
-		console.log("allocating texture" + Date.now());
+		
 		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype });
 		var texWrapper = new lx.Texture(tex);
 
@@ -191,12 +191,12 @@ class TextureCache {
 		info.useCount--;
 		if(info.useCount === 0) {
 			this.cache.set(info.key.toString(),
-				this.cache.safeGet(info.key.toString()).filter((t : lx.Texture) => t !== tex)
+				this.cache.safeGet(info.key.toString()).filter((t : lx.Texture) => t.get().id !== tex.get().id)
 			);
 			
 			tex.dispose();
 			this.numTexturesDbg--;
-			console.log("disposing texture" + Date.now());
+			console.log("disposing texture");
 		}
 	}
 
@@ -206,12 +206,15 @@ class TextureCache {
 		//vec.push(tex);
 		this._setDefaults(tex);
 		return tex;*/
-		console.log("numTexturesDbg = " + this.numTexturesDbg);
-
 		var keyString : string = key.toString();
+		console.log("get(" + keyString + "):");
+
+		console.log("\tnumTexturesDbg = " + this.numTexturesDbg);
+
 		const alreadyExists = this.cache.has(keyString);
+		console.log("\talreadyExists = " + alreadyExists);
 		if (!alreadyExists) {
-			console.log("alreadyExists = " + alreadyExists);
+			console.log("\tcachemap doesn't have anything for this key. allocating texture");
 			const tex = this._allocTex(key);
 			const vec = [ tex ];
 			this.cache.set(keyString, vec);
@@ -221,16 +224,20 @@ class TextureCache {
 		else {
 			const vec = this.cache.safeGet(keyString);
 			
+			var toReturn = null;
 			vec.forEach((tex : lx.Texture) => {
 				var texInfo = this.infos.safeGet(tex.toString());
 				if(texInfo.useCount == 1) {
-					console.log("reusing" + Date.now());
+					console.log("\treusing");
 					this._setDefaults(tex.get());
 					texInfo.useCount++;
-					return tex;
+					toReturn = tex;
 				}
 			});
+			if(toReturn !== null)
+				return toReturn;
 
+			console.log("\tvec doesn't contain an ");
 			var tex = this._allocTex(key);
 			vec.push(tex);
 			this._setDefaults(tex.get());

@@ -2,13 +2,13 @@ import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
-//import './Input.js'; // for side fx
+import './Input.js'; // for side fx
 import * as util from './util.js';
 import { Image } from "./Image.js";
 import { FramerateCounter } from "./FramerateCounter.js"
 
 function initStateTex() {
-	globals.scale = Math.sqrt(20*15) / Math.sqrt(window.innerWidth * window.innerHeight)
+	globals.scale = Math.sqrt(200*150) / Math.sqrt(window.innerWidth * window.innerHeight)
 	
 	var img = new Image(
 		Math.trunc(window.innerWidth*globals.scale), Math.trunc(window.innerHeight*globals.scale),

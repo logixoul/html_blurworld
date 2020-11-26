@@ -16,11 +16,11 @@ circleMesh.position.set(.5, .5, 0);
 scene.add( circleMesh );
 
 function drawCircleToTex(tex, center) {
-	var camera = new THREE.OrthographicCamera( 0, util.unpackTex(tex).image.width, util.unpackTex(tex).image.height, 0, -1000, 1000 );
+	var camera = new THREE.OrthographicCamera( 0, tex.get().image.width, tex.get().image.height, 0, -1000, 1000 );
 
 	circleMesh.position.set(center.x, center.y, 0);
 
-	util.renderer.setRenderTarget(tex);
+	util.renderer.setRenderTarget(tex.renderTargetObj);
 	util.renderer.autoClear = false;
 	util.renderer.render( scene, camera );
 	util.renderer.autoClear = true;
@@ -44,8 +44,8 @@ function unproject(x, y, tex) {
 }
 
 function drawLine(p1Projected, p2Projected) {
-	const p1 = unproject(p1Projected.x, p1Projected.y, globals.stateTex.texture);
-	const p2 = unproject(p2Projected.x, p2Projected.y, globals.stateTex.texture);
+	const p1 = unproject(p1Projected.x, p1Projected.y, globals.stateTex.get());
+	const p2 = unproject(p2Projected.x, p2Projected.y, globals.stateTex.get());
 	for(var i = 0; i < 1; i+=0.1/p1.distanceTo(p2)) {
 		const p = p1.lerp(p2, i)
 		drawCircleToTex(globals.stateTex, p);

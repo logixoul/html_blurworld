@@ -154,6 +154,9 @@ class TextureInfo {
 	}
 }
 
+function console_log(s : string) {
+}
+
 class TextureCache {
 	cache = new SafeMap<string, Array<lx.Texture>>(); // key obtained by TextureCacheKey.toString()
 	infos = new SafeMap<string, TextureInfo>(); // key obtained by lx.Texture.toString()
@@ -208,7 +211,7 @@ class TextureCache {
 			
 			tex.dispose();
 			this.numTexturesDbg--;
-			console.log("disposing texture");
+			console_log("disposing texture");
 		}
 		*/
 	}
@@ -220,14 +223,14 @@ class TextureCache {
 		this._setDefaults(tex);
 		return tex;*/
 		var keyString : string = key.toString();
-		console.log("get(" + keyString + "):");
+		console_log("get(" + keyString + "):");
 
-		console.log("\tnumTexturesDbg = " + this.numTexturesDbg);
+		console_log("\tnumTexturesDbg = " + this.numTexturesDbg);
 
 		const alreadyExists = this.cache.has(keyString);
-		console.log("\talreadyExists = " + alreadyExists);
+		console_log("\talreadyExists = " + alreadyExists);
 		if (!alreadyExists) {
-			console.log("\tcachemap doesn't have anything for this key. allocating texture");
+			console_log("\tcachemap doesn't have anything for this key. allocating texture");
 			const tex = this._allocTex(key);
 			const vec = [ tex ];
 			this.cache.set(keyString, vec);
@@ -241,14 +244,14 @@ class TextureCache {
 				let tex : lx.Texture = vec[i];
 				var texInfo = this.infos.safeGet(tex.toString());
 				if(texInfo.useCount == 0) {
-					console.log("\treusing");
+					console_log("\treusing");
 					this._setDefaults(tex.get());
 					texInfo.useCount++;
 					return tex;
 				}
 			}
 
-			console.log("\tvec doesn't contain an unused ");
+			console_log("\tvec doesn't contain an unused ");
 			var tex = this._allocTex(key);
 			vec.push(tex);
 			this._setDefaults(tex.get());

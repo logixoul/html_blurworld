@@ -44,14 +44,14 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 
-	shade2([globals.stateTex], `
+	/*shade2([globals.stateTex], `
 	_out.rgb = fetch3();
 	`, {
 		toScreen: true,
 		releaseFirstInputTex: false
 	});
 
-	return;
+	return;*/
 
 	globals.stateTex = ImgProc.blur(globals.stateTex, 0.45, /*releaseFirstInputTex=*/ true);
 	globals.stateTex = shade2([globals.stateTex], `

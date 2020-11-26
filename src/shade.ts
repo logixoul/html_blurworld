@@ -182,6 +182,18 @@ class TextureCache {
 	onNoLongerUsingTex(tex : lx.Texture) {
 		var info : TextureInfo | undefined = this.infos.get(tex.toString());
 		if(info === undefined) {
+			console.assert(tex.get() instanceof THREE.DataTexture);
+			// `tex` has not been created by TextureCache and is not managed by it.
+			// Since `onNoLongerUsingTex()` has been called, the user tells us that he no longer needs that texture so
+			// it's safe to just dispose it.
+			tex.dispose();
+			return;
+		}
+		info.useCount--;
+		/*
+
+		var info : TextureInfo | undefined = this.infos.get(tex.toString());
+		if(info === undefined) {
 			// `tex` has not been created by TextureCache and is not managed by it.
 			// Since `onNoLongerUsingTex()` has been called, the user tells us that he no longer needs that texture so
 			// it's safe to just dispose it.
@@ -198,6 +210,7 @@ class TextureCache {
 			this.numTexturesDbg--;
 			console.log("disposing texture");
 		}
+		*/
 	}
 
 	get(key : TextureCacheKey)
@@ -224,20 +237,18 @@ class TextureCache {
 		else {
 			const vec = this.cache.safeGet(keyString);
 			
-			var toReturn = null;
-			vec.forEach((tex : lx.Texture) => {
+			for(let i = 0; i < vec.length; i++) {
+				let tex : lx.Texture = vec[i];
 				var texInfo = this.infos.safeGet(tex.toString());
-				if(texInfo.useCount == 1) {
+				if(texInfo.useCount == 0) {
 					console.log("\treusing");
 					this._setDefaults(tex.get());
 					texInfo.useCount++;
-					toReturn = tex;
+					return tex;
 				}
-			});
-			if(toReturn !== null)
-				return toReturn;
+			}
 
-			console.log("\tvec doesn't contain an ");
+			console.log("\tvec doesn't contain an unused ");
 			var tex = this._allocTex(key);
 			vec.push(tex);
 			this._setDefaults(tex.get());

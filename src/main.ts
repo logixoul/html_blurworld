@@ -2,7 +2,7 @@ import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
-import './Input.js'; // for side fx
+//import './Input.js'; // for side fx
 import * as util from './util.js';
 import { Image } from "./Image.js";
 import { FramerateCounter } from "./FramerateCounter.js"
@@ -43,6 +43,13 @@ function animate(now: DOMHighResTimeStamp) {
 	//requestAnimationFrame( animate );
 	
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
+
+	shade2([globals.stateTex], `
+	_out.rgb = fetch3();
+	`, {
+		toScreen: true,
+		releaseFirstInputTex: false
+	});
 
 	return;
 

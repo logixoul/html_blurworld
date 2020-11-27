@@ -61,7 +61,7 @@ function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 	return state;
 }
 
-export function extrude(inTex, releaseFirstInputTex) {
+export function extrude(inTex, scale, releaseFirstInputTex) {
 	const iters = 30;
 	var state = util.cloneTex(inTex);
 	/*state = shade2([state], `
@@ -77,7 +77,7 @@ export function extrude(inTex, releaseFirstInputTex) {
 	{
 		state = extrude_oneIteration(state, inTex, /*releaseFirstInputTex=*/ true);
 	}
-	for(let i = 0; i < 2; i++) {
+	for(let i = 0; i < 1; i++) {
 		state = shade2([state, inTex], `
 			float f = fetch1(tex2);
 			float fw = fwidth(f);
@@ -85,7 +85,7 @@ export function extrude(inTex, releaseFirstInputTex) {
 			f = fetch1() * f;
 			_out.r = f;
 			`, {
-				scale: new THREE.Vector2(2, 2),
+				scale: new THREE.Vector2(1.0 / scale, 1.0 / scale),
 				releaseFirstInputTex: true
 			});
 		//state = extrude_oneIteration(state, inTex);

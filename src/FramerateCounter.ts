@@ -1,7 +1,7 @@
 
 // https://stackoverflow.com/questions/16432804/recording-fps-in-webgl
 export class FramerateCounter {
-	sfpElem = document.querySelector("#fps");
+	sfpElem = document.querySelector("#framerate");
 	//sfpElem.style.display="none";
 	then = 0;
 	sfpSmoothed = -1;

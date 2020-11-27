@@ -9,6 +9,7 @@ import { FramerateCounter } from "./FramerateCounter.js"
 
 function initStateTex() {
 	globals.scale = Math.sqrt(200*150) / Math.sqrt(window.innerWidth * window.innerHeight)
+	globals.scale *= 2;
 	
 	var img = new Image(
 		Math.trunc(window.innerWidth*globals.scale), Math.trunc(window.innerHeight*globals.scale),
@@ -29,6 +30,10 @@ function initStateTex() {
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
 	
 	document.getElementById("loadingScreen")!.style.display = "none";
+
+	if(window.location.hostname !== "localhost") {
+		document.getElementById("framerate")!.style.display = "none";
+	}
 }
 
 initStateTex();
@@ -39,8 +44,8 @@ const framerateCounter = new FramerateCounter();
 
 function animate(now: DOMHighResTimeStamp) {
 	framerateCounter.update(now);
-	setInterval(animate, 1000);
-	//requestAnimationFrame( animate );
+	//setInterval(animate, 1000);
+	requestAnimationFrame( animate );
 	
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 
@@ -68,9 +73,10 @@ function animate(now: DOMHighResTimeStamp) {
 		//	scale: new THREE.Vector2(1.0/globals.scale, 1.0/globals.scale),
 			releaseFirstInputTex: false
 		});
-	tex2 = ImgProc.extrude(tex2, /*releaseFirstInputTex=*/ true);
+	tex2 = ImgProc.extrude(tex2, globals.scale, /*releaseFirstInputTex=*/ true);
 	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
+		d *= 3.0f;
 		_out.rgb = vec3(0,.2,.5);
 		_out.rgb += vec3(max(-d, 0.0f)); // specular
 		if(d>0.0f)_out.rgb /= 2.0f+d; // shadows
@@ -80,5 +86,6 @@ function animate(now: DOMHighResTimeStamp) {
 			toScreen: true,
 			releaseFirstInputTex: true
 		});
+	console.log("w="+globals.stateTex.get().image.width);
 }
 requestAnimationFrame(animate);

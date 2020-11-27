@@ -1,0 +1,30 @@
+{
+  "name": "html_blurworld",
+  "version": "1.0.0",
+  "description": "",
+  "main": "gulpfile.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/logixoul/html_blurworld.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/logixoul/html_blurworld/issues"
+  },
+  "homepage": "https://github.com/logixoul/html_blurworld#readme",
+  "devDependencies": {
+    "gulp": "^4.0.0",
+    "gulp-typescript": "^6.0.0-alpha.1",
+    "typescript": "^4.1.2"
+  },
+  "dependencies": {
+    "ts-node": "^9.0.0"
+  }
+}

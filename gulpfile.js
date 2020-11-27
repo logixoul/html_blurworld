@@ -1,6 +1,9 @@
-function defaultTask(cb) {
-  // place code for your default task here
-  cb();
-}
+// https://www.typescriptlang.org/docs/handbook/gulp.html
 
-exports.default = defaultTask
+var gulp = require("gulp");
+var ts = require("gulp-typescript");
+var tsProject = ts.createProject("tsconfig.json");
+
+gulp.task("default", function () {
+  return tsProject.src().pipe(tsProject()).js.pipe(gulp.dest("built"));
+});

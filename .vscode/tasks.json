@@ -1,7 +1,7 @@
 {
 	"version": "2.0.0",
 	"tasks": [
-		{
+		/*{
 			"type": "typescript",
 			"tsconfig": "tsconfig.json",
 			"problemMatcher": [
@@ -12,6 +12,23 @@
 				"isDefault": true
 			},
 			"label": "tsc: build - tsconfig.json"
+		},*/
+		{
+			"type": "shell",
+			"label": "build",
+			"command": "gulp",
+            "args": [
+            ],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
 		}
 	]
 }

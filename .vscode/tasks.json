@@ -15,9 +15,28 @@
 		},*/
 		{
 			"type": "shell",
-			"label": "build",
+			"label": "buildLibs",
 			"command": "gulp",
             "args": [
+				"buildLibs"
+            ],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+		{
+			"type": "shell",
+			"label": "buildApp",
+			"command": "gulp",
+            "args": [
+				"buildApp"
             ],
 			"options": {
 				"cwd": "${workspaceFolder}"

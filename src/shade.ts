@@ -56,10 +56,13 @@ function mapType(value: any) {
 
 const vertexShader : string = `
 varying vec2 vUv;
+vec2 tc;
 
 void main() {
-	vUv = uv;
+	tc = uv; // backward compatibility
 	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	%VSHADER_EXTRA%
+	vUv = tc;
 }
 `;
 	
@@ -270,9 +273,9 @@ interface ShadeOpts {
 	scale?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
 	uniforms?: UniformMap,
+	vshaderExtra?: string
 }
 
-//export function shade2(texs : Array<lx.Texture>, fshader : string, options : ShadeOpts) {
 export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) {
 	const wrappedTexs = texs.map(t => new lx.Texture(t));
 
@@ -285,6 +288,7 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 		itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
 		uniforms: options.uniforms || { },
+		vshaderExtra: options.vshaderExtra || "",
 	};
 	/*if(processedOptions.releaseFirstInputTex === undefined) {
 		throw "error";
@@ -335,7 +339,7 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	if(!cachedMaterial) {
 		cachedMaterial = new THREE.ShaderMaterial( {
 			uniforms: params.uniforms,
-			vertexShader: vertexShader,
+			vertexShader: uniformsString + vertexShader.replace("%VSHADER_EXTRA%", processedOptions.vshaderExtra),
 			fragmentShader: fshader_complete,
 			side: THREE.DoubleSide,
 			blending: THREE.NoBlending

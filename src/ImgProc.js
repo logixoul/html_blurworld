@@ -2,6 +2,24 @@ import { shade2, textureCache, lx } from "./shade.js";
 import * as util from "./util.js";
 import * as THREE from '../lib/node_modules/three/src/Three.js';
 
+// from adaptive-contrast-stretching-cpp-2
+export function fastBlur(tex, releaseFirstInputTex) {
+	return shade2([tex], `
+		float sum = float(0.0);
+		sum += fetch1(tex1, tc);
+		sum += fetch1(tex1, tc + tsize1 * vec2(1, 0));
+		sum += fetch1(tex1, tc + tsize1 * vec2(0, 1));
+		sum += fetch1(tex1, tc + tsize1 * vec2(1, 1));
+
+		_out.r = sum / 4.0f;
+		`
+		, {
+			releaseFirstInputTex: releaseFirstInputTex,
+			vshaderExtra: `tc -= tsize1 / 2.0;`
+		}
+	);
+}
+
 export function blur(tex, width, releaseFirstInputTex) {
 	if(width === undefined) width = .45;
 	var tex2 = shade2([tex], `

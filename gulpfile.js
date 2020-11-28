@@ -5,9 +5,9 @@ var ts = require("gulp-typescript");
 const concat = require('gulp-concat');
 var tsProject = ts.createProject("tsconfig.json");
 
-gulp.task("default", function () {
+exports.default = function() {
   return tsProject.src()
   	.pipe(tsProject()).js
-	.pipe(gulp.dest("built")
-	);
-});
+	.pipe(concat("concatted.js"))
+	.pipe(gulp.dest("built"));
+};

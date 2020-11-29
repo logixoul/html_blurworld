@@ -8,11 +8,13 @@ import { Image } from "./Image.js";
 import { FramerateCounter } from "./FramerateCounter.js"
 
 function initStateTex() {
-	globals.scale = Math.sqrt(200*150) / Math.sqrt(window.innerWidth * window.innerHeight)
+	var documentW = window.innerWidth * window.devicePixelRatio;
+	var documentH = window.innerHeight * window.devicePixelRatio;
+	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
 	globals.scale *= 2;
 	
 	var img = new Image(
-		Math.trunc(window.innerWidth*globals.scale), Math.trunc(window.innerHeight*globals.scale),
+		Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
 		Float32Array);
 		//Uint8Array);
 
@@ -86,6 +88,6 @@ function animate(now: DOMHighResTimeStamp) {
 			toScreen: true,
 			releaseFirstInputTex: true
 		});
-	console.log("w="+globals.stateTex.get().image.width);
+	//console.log("w="+globals.stateTex.get().image.width);
 }
 requestAnimationFrame(animate);

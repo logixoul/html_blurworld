@@ -10,9 +10,3 @@ Lo prio:
 	REDUCE THE NUMBER of ! operators in my TS code
 	Rename safeGet to checkedGet
 
-
-
-=====================
-
-TODO for TypeScript conversion:
-	Make all function parameters declare their types.

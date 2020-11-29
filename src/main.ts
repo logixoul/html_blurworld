@@ -11,7 +11,7 @@ function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
 	var documentH = window.innerHeight * window.devicePixelRatio;
 	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
-	globals.scale *= 2;
+	//globals.scale *= 2;
 	
 	var img = new Image(
 		Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),

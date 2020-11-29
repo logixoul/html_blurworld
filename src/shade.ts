@@ -196,27 +196,6 @@ class TextureCache {
 			return;
 		}
 		info.useCount--;
-		/*
-
-		var info : TextureInfo | undefined = this.infos.get(tex.toString());
-		if(info === undefined) {
-			// `tex` has not been created by TextureCache and is not managed by it.
-			// Since `onNoLongerUsingTex()` has been called, the user tells us that he no longer needs that texture so
-			// it's safe to just dispose it.
-			tex.dispose();
-			return;
-		}
-		info.useCount--;
-		if(info.useCount === 0) {
-			this.cache.set(info.key.toString(),
-				this.cache.safeGet(info.key.toString()).filter((t : lx.Texture) => t.get().id !== tex.get().id)
-			);
-			
-			tex.dispose();
-			this.numTexturesDbg--;
-			console_log("disposing texture");
-		}
-		*/
 	}
 
 	get(key : TextureCacheKey)

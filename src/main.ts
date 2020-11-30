@@ -9,6 +9,8 @@ import { Image } from "./Image.js";
 import { FramerateCounter } from "./FramerateCounter.js"
 import * as System from "./System.js"
 
+var imageLoaded : boolean = false;
+
 function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
 	var documentH = window.innerHeight * window.devicePixelRatio;
@@ -22,12 +24,20 @@ function initStateTex() {
 
 	img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
-	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
+	/*globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
 		THREE.FloatType);
 		//THREE.UnsignedByteType);
+*/
+	new THREE.TextureLoader().load( 'test.png',
 
-	globals.stateTex.generateMipmaps = false;
-
+	// onLoad callback
+	function ( texture ) {
+		// in this example we create the material when the texture is loaded
+		globals.stateTex = new Shade.lx.Texture(texture);
+		globals.stateTex.generateMipmaps = false;
+		imageLoaded = true;
+	} );
+	
 	/*globals.stateTex = shade2([globals.stateTex],
 		`_out.r = fetch1();`, { itype: THREE.UnsignedByteType });*/
 
@@ -86,15 +96,15 @@ function dbgBicubicUpscale(inTex : Shade.lx.Texture, scale : number, releaseFirs
 function animateDbg(now: DOMHighResTimeStamp) {
 	//setInterval(animate, 1000);
 	requestAnimationFrame( animateDbg );
-	
+	if(!imageLoaded) return;
 	var tex2 = util.cloneTex(globals.stateTex!);
-	tex2 = dbgBicubicUpscale(tex2!, globals.scale, true);
+	tex2 = dbgBicubicUpscale(tex2!, globals.scale * 0 + 4, true);
 	
 	shade2([tex2!], `
 		//_out.rgb = vec3(fetch1());
 		//_out.rgb /= _out.rgb + 1.0;
 		float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
-		_out.rgb = vec3(d)*5.0;
+		_out.rgb = vec3(d);
 	`, {
 		toScreen: true,
 		releaseFirstInputTex: true

@@ -12,7 +12,7 @@ import * as System from "./System.js"
 function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
 	var documentH = window.innerHeight * window.devicePixelRatio;
-	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
+	globals.scale = Math.sqrt(20*150) / Math.sqrt(documentW * documentH);
 	//globals.scale *= 2;
 	
 	var img = new Image(
@@ -53,9 +53,9 @@ function dbgBicubicUpscale(inTex : Shade.lx.Texture, scale : number, releaseFirs
 		//float fw = fwidth(f);
 		//f = smoothstep(.5-fw, .5+fw, f);
 		if(mouse.x < 100.0)
-			f = fetchBicubic(tex1, tc) * f;
+			f = fetchBicubic(tex1, tc);
 		else
-			f = fetch1(tex1, tc) * f;
+			f = fetch1(tex1, tc);
 		_out.r = f;
 		`, {
 			scale: new THREE.Vector2(1.0 / scale, 1.0 / scale),
@@ -67,7 +67,7 @@ function dbgBicubicUpscale(inTex : Shade.lx.Texture, scale : number, releaseFirs
 				tc_ *= vec2(textureSize(tex, 0));
 				tc_ += .5;
 				vec2 fl = floor(tc_);
-				vec2 fr = fract(tc_);
+				vec2 fr = tc_ - fl;
 				vec2 smoothTc = fl + smoothstep(vec2(0.0), vec2(1.0), fr);
 				smoothTc -= .5;
 				smoothTc /= vec2(textureSize(tex, 0));
@@ -91,10 +91,10 @@ function animateDbg(now: DOMHighResTimeStamp) {
 	tex2 = dbgBicubicUpscale(tex2!, globals.scale, true);
 	
 	shade2([tex2!], `
-		//_out.rgb = vec3(fetch1());
+		_out.rgb = vec3(fetch1());
 		//_out.rgb /= _out.rgb + 1.0;
-		float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
-		_out.rgb = vec3(d)*5.0;
+		//float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
+		//_out.rgb = vec3(d)*5.0;
 	`, {
 		toScreen: true,
 		releaseFirstInputTex: true
@@ -144,4 +144,4 @@ function animate(now: DOMHighResTimeStamp) {
 		});
 	//console.log("w="+globals.stateTex.get().image.width);
 }
-requestAnimationFrame(animate);
+requestAnimationFrame(animateDbg);

@@ -50,12 +50,12 @@ function dbgBicubicUpscale(inTex : Shade.lx.Texture, scale : number, releaseFirs
 	var state = util.cloneTex(inTex)!;
 	state = shade2([state, inTex], `
 		float f = fetch1(tex2, tc);
-		//float fw = fwidth(f);
-		//f = smoothstep(.5-fw, .5+fw, f);
+		float fw = fwidth(f);
+		f = smoothstep(.5-fw, .5+fw, f);
 		if(mouse.x < 100.0)
-			f = fetchBicubic(tex1, tc);
+			f = fetchBicubic(tex1, tc) * f;
 		else
-			f = fetch1(tex1, tc);
+			f = fetch1(tex1, tc) * f;
 		_out.r = f;
 		`, {
 			scale: new THREE.Vector2(1.0 / scale, 1.0 / scale),

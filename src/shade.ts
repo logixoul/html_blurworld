@@ -2,6 +2,7 @@ import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { renderer } from './util.js';
 import * as util from './util.js';
 import { SafeMap } from './SafeMap.js';
+import * as System from './System.js';
 
 type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | lx.Texture);
 
@@ -51,6 +52,9 @@ function mapType(value: any) {
 		return 'vec2';
 	else if(typeof value === "number")
 		return 'float';
+	else if(value.isTexture) {
+		return 'sampler2D';
+	}
 	else throw "error";
 }
 
@@ -107,7 +111,7 @@ const intro = `
 	float fetch1() {
 		return texture2D(tex1, tc).r;
 	}
-	void shade() {
+
 `;
 
 const outro = `
@@ -252,15 +256,14 @@ interface ShadeOpts {
 	scale?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
 	uniforms?: UniformMap,
-	vshaderExtra?: string
+	vshaderExtra?: string,
+	lib?: string,
 }
 
-export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) {
+export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
 	const wrappedTexs = texs.map(t => new lx.Texture(t));
 
 	options = options || {};
-	//if(options.releaseFirstInputTex === undefined)
-	//	throw "For now, you have to specify this manually, always";
 	var processedOptions = {
 		releaseFirstInputTex: options.releaseFirstInputTex,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
@@ -268,10 +271,8 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
 		uniforms: options.uniforms || { },
 		vshaderExtra: options.vshaderExtra || "",
+		lib: options.lib || "",
 	};
-	/*if(processedOptions.releaseFirstInputTex === undefined) {
-		throw "error";
-	}*/
 
 	var renderTarget;
 	if(options.toScreen) {
@@ -285,12 +286,14 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}
 
+
+
 	var params : THREE.ShaderMaterialParameters = {
 		uniforms: {
-			time: { value: 0.0 }
+			time: { value: 0.0 },
+			mouse: { value: System.getMousePos() },
 		}
 	};
-	
 
 	var uniformsString = "";
 
@@ -298,8 +301,8 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	texs.forEach(tex => {
 		const name = "tex" + (i+1);
 		const tsizeName = "tsize" + (i+1);
-		uniformsString += "uniform sampler2D " + name + ";";
-		uniformsString += "uniform vec2 " + tsizeName + ";";
+		//uniformsString += "uniform sampler2D " + name + ";";
+		//uniformsString += "uniform vec2 " + tsizeName + ";";
 		var texture : THREE.Texture = wrappedTexs[i].get();
 		params.uniforms![name] = { value: texture };
 		params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texture.image.width, 1.0 / texture.image.height) };
@@ -308,11 +311,14 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 
 	Object.keys(processedOptions.uniforms).forEach(key => {
 		var value=processedOptions.uniforms[key];
-		uniformsString += "uniform " + mapType(value) + " " + key + ";";
 		params.uniforms![key] = { value: value };
 	});
+	Object.keys(params.uniforms!).forEach(key => { // todo: do i need the '!'?
+		var value=params.uniforms![key].value;
+		uniformsString += "uniform " + mapType(value) + " " + key + ";";
+	});
 
-	const fshader_complete = uniformsString + intro + fshader + outro;
+	const fshader_complete = uniformsString + intro + processedOptions.lib + "	void shade() {" + fshader + outro;
 	var cachedMaterial = programCache[fshader_complete];
 	var cachedMesh = meshCache[fshader_complete];
 	if(!cachedMaterial) {
@@ -330,15 +336,11 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	}
 	var material = cachedMaterial;
 	var mesh = cachedMesh;
-	//material.uniforms = { ...material.uniforms, ...uniforms };
-	//uniforms.forEach(u => material.uniforms[u.
 	for (const [key, value] of Object.entries(params.uniforms!)) { // todo: is the "!" necessary?
 		material.uniforms[key] = value;
 	}
 
-	mesh.position.set(.5, .5, 0);
-
-	
+	mesh.position.set(.5, .5, 0);	
 
 	scene.add( mesh );
 
@@ -347,11 +349,10 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 
 	scene.remove( mesh );
 
-	//material.dispose();
-
 	if(processedOptions.releaseFirstInputTex) {
 		textureCache.onNoLongerUsingTex(wrappedTexs[0]);
-		//texs[0].dispose();
 	}
-	return renderTarget;
+	if(renderTarget === null)
+		return null;
+	return new lx.Texture(renderTarget);
 }

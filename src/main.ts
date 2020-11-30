@@ -12,7 +12,7 @@ import * as System from "./System.js"
 function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
 	var documentH = window.innerHeight * window.devicePixelRatio;
-	globals.scale = Math.sqrt(20*150) / Math.sqrt(documentW * documentH);
+	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
 	//globals.scale *= 2;
 	
 	var img = new Image(
@@ -127,23 +127,8 @@ function animate(now: DOMHighResTimeStamp) {
 		//	scale: new THREE.Vector2(1.0/globals.scale, 1.0/globals.scale),
 			releaseFirstInputTex: false
 		});
-	tex2 = dbgBicubicUpscale(tex2!, globals.scale, true);
-	//tex2 = ImgProc.extrude(tex2, globals.scale, /*releaseFirstInputTex=*/ true);
+	tex2 = ImgProc.extrude(tex2, globals.scale, /*releaseFirstInputTex=*/ true);
 	
-	//if(
-	//var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
-	/*shade2([tex2!], `
-		//_out.rgb = vec3(fetch1());
-		//_out.rgb /= _out.rgb + 1.0;
-		float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
-		_out.rgb = vec3(d)*5.0;
-	`, {
-		toScreen: true,
-		releaseFirstInputTex: true
-	});
-
-	return;*/
-
 	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
 		d *= 3.0f;
@@ -159,4 +144,4 @@ function animate(now: DOMHighResTimeStamp) {
 		});
 	//console.log("w="+globals.stateTex.get().image.width);
 }
-requestAnimationFrame(animateDbg);
+requestAnimationFrame(animate);

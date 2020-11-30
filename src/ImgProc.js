@@ -80,7 +80,7 @@ function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 }
 
 export function extrude(inTex, scale, releaseFirstInputTex) {
-	const iters = 0;
+	const iters = 30;
 	var state = util.cloneTex(inTex);
 	/*state = shade2([state], `
 		_out.r = fetch1() * mul;
@@ -112,13 +112,13 @@ export function extrude(inTex, scale, releaseFirstInputTex) {
 				float fetchBicubic(sampler2D tex, vec2 tc_) {
 					//return fetch1(tex, tc_);
 
-					tc_ *= vec2(textureSize(tex, 0));
+					tc_ *= vec2(textureSize(tex, 0)) - 1.0;
 					tc_ += .5;
 					vec2 fl = floor(tc_);
 					vec2 fr = fract(tc_);
 					vec2 smoothTc = fl + smoothstep(vec2(0.0), vec2(1.0), fr);
 					smoothTc -= .5;
-					smoothTc /= vec2(textureSize(tex, 0));
+					smoothTc /= vec2(textureSize(tex, 0)) - 1.0;
 					tc_ = smoothTc;
 					return fetch1(tex, tc_);
 				}

@@ -80,7 +80,7 @@ function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 }
 
 export function extrude(inTex, scale, releaseFirstInputTex) {
-	const iters = 30;
+	const iters = 0;
 	var state = util.cloneTex(inTex);
 	/*state = shade2([state], `
 		_out.r = fetch1() * mul;
@@ -97,14 +97,32 @@ export function extrude(inTex, scale, releaseFirstInputTex) {
 	}
 	for(let i = 0; i < 1; i++) {
 		state = shade2([state, inTex], `
-			float f = fetch1(tex2);
-			float fw = fwidth(f);
-			f = smoothstep(.5-fw, .5+fw, f);
-			f = fetch1() * f;
+			float f = fetch1(tex2, tc);
+			//float fw = fwidth(f);
+			//f = smoothstep(.5-fw, .5+fw, f);
+			if(mouse.x < 100.0)
+				f = fetchBicubic(tex1, tc) * f;
+			else
+				f = fetch1(tex1, tc) * f;
 			_out.r = f;
 			`, {
 				scale: new THREE.Vector2(1.0 / scale, 1.0 / scale),
-				releaseFirstInputTex: true
+				releaseFirstInputTex: true,
+				lib: `
+				float fetchBicubic(sampler2D tex, vec2 tc_) {
+					//return fetch1(tex, tc_);
+
+					tc_ *= vec2(textureSize(tex, 0));
+					tc_ += .5;
+					vec2 fl = floor(tc_);
+					vec2 fr = fract(tc_);
+					vec2 smoothTc = fl + smoothstep(vec2(0.0), vec2(1.0), fr);
+					smoothTc -= .5;
+					smoothTc /= vec2(textureSize(tex, 0));
+					tc_ = smoothTc;
+					return fetch1(tex, tc_);
+				}
+			`
 			});
 		//state = extrude_oneIteration(state, inTex);
 	}

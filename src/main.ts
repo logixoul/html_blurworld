@@ -10,7 +10,7 @@ import { FramerateCounter } from "./FramerateCounter.js"
 function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
 	var documentH = window.innerHeight * window.devicePixelRatio;
-	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
+	globals.scale = Math.sqrt(20*150) / Math.sqrt(documentW * documentH);
 	//globals.scale *= 2;
 	
 	var img = new Image(
@@ -51,15 +51,7 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 
-	/*shade2([globals.stateTex], `
-	_out.rgb = fetch3();
-	`, {
-		toScreen: true,
-		releaseFirstInputTex: false
-	});
-
-	return;*/
-
+	if(false) {
 	globals.stateTex = ImgProc.blur(globals.stateTex, 0.45, /*releaseFirstInputTex=*/ true);
 	globals.stateTex = shade2([globals.stateTex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
@@ -76,8 +68,23 @@ function animate(now: DOMHighResTimeStamp) {
 			releaseFirstInputTex: false
 		});
 	tex2 = ImgProc.extrude(tex2, globals.scale, /*releaseFirstInputTex=*/ true);
+	}
+	//if(
+	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
+	shade2([tex2!], `
+		_out.rgb = vec3(fetch1());
+		//_out.rgb /= _out.rgb + 1.0;
+		/*float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
+		_out.rgb = vec3(d);*/
+	`, {
+		toScreen: true,
+		releaseFirstInputTex: true
+	});
+
+	return;
+
 	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
-		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
+		float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
 		d *= 3.0f;
 		_out.rgb = vec3(0,.2,.5);
 		_out.rgb += vec3(max(-d, 0.0f)); // specular
@@ -86,7 +93,8 @@ function animate(now: DOMHighResTimeStamp) {
 		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2));
 		`, {
 			toScreen: true,
-			releaseFirstInputTex: true
+			releaseFirstInputTex: true,
+			
 		});
 	//console.log("w="+globals.stateTex.get().image.width);
 }

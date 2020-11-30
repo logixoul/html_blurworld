@@ -87,7 +87,8 @@ function animateDbg(now: DOMHighResTimeStamp) {
 	//setInterval(animate, 1000);
 	requestAnimationFrame( animateDbg );
 	
-	var tex2 = dbgBicubicUpscale(globals.stateTex!, globals.scale, false);
+	var tex2 = util.cloneTex(globals.stateTex!);
+	tex2 = dbgBicubicUpscale(tex2!, globals.scale, true);
 	
 	shade2([tex2!], `
 		//_out.rgb = vec3(fetch1());

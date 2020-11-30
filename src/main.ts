@@ -83,6 +83,24 @@ function dbgBicubicUpscale(inTex : Shade.lx.Texture, scale : number, releaseFirs
 	return state;
 }
 
+function animateDbg(now: DOMHighResTimeStamp) {
+	//setInterval(animate, 1000);
+	requestAnimationFrame( animateDbg );
+	
+	var tex2 = dbgBicubicUpscale(globals.stateTex!, globals.scale, false);
+	
+	shade2([tex2!], `
+		//_out.rgb = vec3(fetch1());
+		//_out.rgb /= _out.rgb + 1.0;
+		float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
+		_out.rgb = vec3(d)*5.0;
+	`, {
+		toScreen: true,
+		releaseFirstInputTex: true
+	});
+}
+
+
 function animate(now: DOMHighResTimeStamp) {
 	framerateCounter.update(now);
 	//setInterval(animate, 1000);
@@ -140,4 +158,4 @@ function animate(now: DOMHighResTimeStamp) {
 		});
 	//console.log("w="+globals.stateTex.get().image.width);
 }
-requestAnimationFrame(animate);
+requestAnimationFrame(animateDbg);

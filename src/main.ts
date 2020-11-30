@@ -104,7 +104,7 @@ function animateDbg(now: DOMHighResTimeStamp) {
 		//_out.rgb = vec3(fetch1());
 		//_out.rgb /= _out.rgb + 1.0;
 		float d = fetch1(tex1, tc) - fetch1(tex1, tc - vec2(0, tsize1.y));
-		_out.rgb = vec3(d);
+		_out.rgb = vec3(d)*50.0;
 	`, {
 		toScreen: true,
 		releaseFirstInputTex: true

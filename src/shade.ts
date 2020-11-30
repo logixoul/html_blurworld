@@ -260,7 +260,7 @@ interface ShadeOpts {
 	lib?: string,
 }
 
-export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) {
+export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
 	const wrappedTexs = texs.map(t => new lx.Texture(t));
 
 	options = options || {};
@@ -352,5 +352,7 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	if(processedOptions.releaseFirstInputTex) {
 		textureCache.onNoLongerUsingTex(wrappedTexs[0]);
 	}
-	return renderTarget;
+	if(renderTarget === null)
+		return null;
+	return new lx.Texture(renderTarget);
 }

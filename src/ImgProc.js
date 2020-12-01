@@ -22,6 +22,9 @@ export function fastBlur(tex, releaseFirstInputTex) {
 
 export function blur(tex, width, releaseFirstInputTex) {
 	if(width === undefined) width = .45;
+
+	width = 1;
+
 	var tex2 = shade2([tex], `
 		float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
 		float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
@@ -97,14 +100,32 @@ export function extrude(inTex, scale, releaseFirstInputTex) {
 	}
 	for(let i = 0; i < 1; i++) {
 		state = shade2([state, inTex], `
-			float f = fetch1(tex2);
-			float fw = fwidth(f);
-			f = smoothstep(.5-fw, .5+fw, f);
-			f = fetch1() * f;
+			float f = fetch1(tex2, tc);
+			//float fw = fwidth(f);
+			//f = smoothstep(.5-fw, .5+fw, f);
+			//if(mouse.x < 100.0)
+				f = fetchBicubic(tex1, tc);
+			//else
+			//	f = fetch1(tex1, tc);
 			_out.r = f;
 			`, {
 				scale: new THREE.Vector2(1.0 / scale, 1.0 / scale),
-				releaseFirstInputTex: true
+				releaseFirstInputTex: true,
+				lib: `
+				float fetchBicubic(sampler2D tex, vec2 tc_) {
+					//return fetch1(tex, tc_);
+
+					tc_ *= vec2(textureSize(tex, 0));
+					tc_ += .5;
+					vec2 fl = floor(tc_);
+					vec2 fr = fract(tc_);
+					vec2 smoothTc = fl + smoothstep(vec2(0.0), vec2(1.0), fr);
+					smoothTc -= .5;
+					smoothTc /= vec2(textureSize(tex, 0));
+					tc_ = smoothTc;
+					return fetch1(tex, tc_);
+				}
+			`
 			});
 		//state = extrude_oneIteration(state, inTex);
 	}

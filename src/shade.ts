@@ -192,7 +192,8 @@ class TextureCache {
 	onNoLongerUsingTex(tex : lx.Texture) {
 		var info : TextureInfo | undefined = this.infos.get(tex.toString());
 		if(info === undefined) {
-			console.assert(tex.get() instanceof THREE.DataTexture);
+			console.log("Is it a THREE.DataTexture? " + tex.get().constructor.name);
+			//console.assert(tex.get() instanceof THREE.DataTexture);
 			// `tex` has not been created by TextureCache and is not managed by it.
 			// Since `onNoLongerUsingTex()` has been called, the user tells us that he no longer needs that texture so
 			// it's safe to just dispose it.

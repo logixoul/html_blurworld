@@ -1,5 +1,6 @@
 import * as THREE from '../lib/node_modules/three/src/Three.js';
 import { shade2 } from './shade.js';
+import * as Shade from './shade.js';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
 import './Input.js'; // for side fx
@@ -20,11 +21,20 @@ function initStateTex() {
 
 	img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
-	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
-		THREE.FloatType);
+	/*globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
+		THREE.FloatType);*/
 		//THREE.UnsignedByteType);
 
-	globals.stateTex.generateMipmaps = false;
+	globals.stateTex = null;
+	new THREE.TextureLoader().load( 'test.png',
+		// onLoad callback
+		function ( texture ) {
+			// in this example we create the material when the texture is loaded
+			globals.stateTex = new Shade.lx.Texture(texture);
+			globals.stateTex.generateMipmaps = false;
+		} );
+
+	//globals.stateTex.generateMipmaps = false;
 
 	/*globals.stateTex = shade2([globals.stateTex],
 		`_out.r = fetch1();`, { itype: THREE.UnsignedByteType });*/
@@ -48,7 +58,8 @@ function animate(now: DOMHighResTimeStamp) {
 	framerateCounter.update(now);
 	//setInterval(animate, 1000);
 	requestAnimationFrame( animate );
-	
+	if(globals.stateTex === null)
+		return;
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 
 	/*shade2([globals.stateTex], `
@@ -60,12 +71,13 @@ function animate(now: DOMHighResTimeStamp) {
 
 	return;*/
 
-	globals.stateTex = ImgProc.blur(globals.stateTex, 0.45, /*releaseFirstInputTex=*/ true);
+	if(0) {globals.stateTex = ImgProc.blur(globals.stateTex, 0.45, /*releaseFirstInputTex=*/ true);
 	globals.stateTex = shade2([globals.stateTex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
 		`, {
 			releaseFirstInputTex: true
 		});
+	}
 	var tex2 = shade2([globals.stateTex], `
 		float f = fetch1();
 		float fw = fwidth(f);

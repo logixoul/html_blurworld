@@ -11,7 +11,7 @@ function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
 	var documentH = window.innerHeight * window.devicePixelRatio;
 	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
-	globals.scale /= 4;
+	//globals.scale /= 4;
 	
 	var img = new Image(
 		Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
@@ -79,8 +79,8 @@ function animate(now: DOMHighResTimeStamp) {
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
 		d *= 3.0f;
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
-		if(d < -0.1)
-			_out.rgb += vec3(max(-d*4.0, 0.0f)); // specular
+		if(d < -1.0)
+			_out.rgb += vec3(max(-d-.3, 0.0f)); // specular
 		else if(d>0.0f)_out.rgb /= 1.0+d; // shadows
 		_out.rgb /= _out.rgb + 1.0f;
 		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2));

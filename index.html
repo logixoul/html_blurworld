@@ -4,11 +4,26 @@
 		<meta charset="utf-8">
 		<title>Erosion</title>
 		<style>
-			body { margin: 0; overscroll-behavior: contain;
-				font-size: 3em;
+			body {
+				margin: 0; overscroll-behavior: contain;
+				font-family: "Consolas", monospace;
 			}
 			canvas { display: block; }
+			#limitFramerateContainer {
+				position: absolute;
+				top: 5em;
+				left: 5em;
+				color: white;
+				text-shadow:
+					0 0 2px black,
+					0 0 2px black,
+					0 0 2px black,
+					0 0 2px black,
+					0 0 2px black
+					;
+			}
 			#intro {
+				font-size: 3em;
 				position: absolute;
 				top: 50%;
 				left: 50%;
@@ -25,9 +40,10 @@
 			#framerate {
 				position: absolute;
 				color: white;
-				sdisplay: none;
+				display: none;
 			}
 			#loadingScreen {
+				font-size: 3em;
 				position: absolute;
 				top: 0px; bottom: 0px; left: 0px; right: 0px;
 				color: white;
@@ -44,8 +60,11 @@
 	<body>
 		<div id="intro">Use the mouse buttons to draw</div>
 		<div id="framerate"></div>
-		<!--<script src="src/opencv.js" type="text/javascript"></script>-->
 		<script type="module" src="built/main.js"></script>
 		<div id="loadingScreen"><div>Loading...</div></div>
+		<div id="limitFramerateContainer">
+			<input type="checkbox" id="limitFramerate" name="limitFramerate" checked>
+  			<label for="limitFramerate">Limit framerate</label>
+		<div>
 	</body>
 </html>

@@ -44,20 +44,17 @@ document.defaultView!.addEventListener("resize", initStateTex);
 
 const framerateCounter = new FramerateCounter();
 
-function animate(now: DOMHighResTimeStamp) {
-	framerateCounter.update(now);
-	setTimeout(animate, 1000);
-	//requestAnimationFrame( animate );
-	
-	/*shade2([globals.stateTex], `
-	_out.rgb = fetch3();
-	`, {
-		toScreen: true,
-		releaseFirstInputTex: false
-	});
+// for debugging
+function earlyOut() {
+	shade2([globals.stateTex], `
+		_out.rgb = fetch3();
+		`, {
+			toScreen: true,
+			releaseFirstInputTex: false
+		});
+}
 
-	return;*/
-
+function doSimulationStep() {
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 	globals.stateTex = ImgProc.blur(globals.stateTex, 0.45, /*releaseFirstInputTex=*/ true);
 	globals.stateTex = shade2([globals.stateTex], `
@@ -65,13 +62,28 @@ function animate(now: DOMHighResTimeStamp) {
 		`, {
 			releaseFirstInputTex: true
 		});
+}
+
+let limitFramerateCheckbox = document.getElementById("limitFramerate")! as HTMLInputElement;
+
+function animate(now: DOMHighResTimeStamp) {
+	framerateCounter.update(now);
+	if(limitFramerateCheckbox.checked)
+		setTimeout(animate, 1000);
+	else
+		requestAnimationFrame( animate );
+	
+	/*earlyOut();
+	return;*/
+
+	doSimulationStep();
+	
 	var tex2 = shade2([globals.stateTex], `
 		float f = fetch1();
 		float fw = fwidth(f);
 		f = smoothstep(.5-fw, .5+fw, f);
 		_out.r = f;
 		`, {
-		//	scale: new THREE.Vector2(1.0/globals.scale, 1.0/globals.scale),
 			releaseFirstInputTex: false
 		});
 	tex2 = ImgProc.extrude(tex2, globals.scale, /*releaseFirstInputTex=*/ true);
@@ -83,11 +95,10 @@ function animate(now: DOMHighResTimeStamp) {
 			_out.rgb += vec3(max(-d-.3, 0.0f)); // specular
 		else if(d>0.0f)_out.rgb /= 1.0+d; // shadows
 		_out.rgb /= _out.rgb + 1.0f;
-		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2));
+		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 		`, {
 			toScreen: true,
 			releaseFirstInputTex: true
 		});
-	//console.log("w="+globals.stateTex.get().image.width);
 }
 requestAnimationFrame(animate);

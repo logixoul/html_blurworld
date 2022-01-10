@@ -3,7 +3,6 @@ export class Globals {
 	stateTex;
 	textureRegistry;
 	scale; // number
-	keysHeld =  { };
 };
 
 export var globals = new Globals();

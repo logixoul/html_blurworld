@@ -1,6 +1,7 @@
 import { globals } from "./Globals.js"
 import * as THREE from '../lib/node_modules/three/src/Three.js';
 import * as util from './util.js';
+import * as KeysHeld from './KeysHeld.js'
 
 var scene = new THREE.Scene();
 
@@ -81,10 +82,10 @@ document.addEventListener("touchmove", e => {
 
 document.addEventListener("keydown", e => {
 	const char = e.code.toLowerCase();
-	globals.keysHeld[char] = true;
+	KeysHeld.global_keysHeld[char] = true;
 });
 
 document.addEventListener("keyup", e => {
 	const char = e.code.toLowerCase();
-	globals.keysHeld[char] = false;
+	KeysHeld.global_keysHeld[char] = false;
 });

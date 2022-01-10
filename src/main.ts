@@ -6,6 +6,7 @@ import './Input.js'; // for side fx
 import * as util from './util.js';
 import { Image } from "./Image.js";
 import { FramerateCounter } from "./FramerateCounter.js"
+import * as KeysHeld from './KeysHeld.js'
 
 function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
@@ -80,10 +81,10 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	doSimulationStep();
 	
-	/*if(globals.keysHeld["1"]) {
+	if(KeysHeld.global_keysHeld["digit1"]) {
 		drawToScreen(globals.stateTex, false);
 		return;
-	}*/
+	}
 
 	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
 	shade2([tex2?.get()!, backgroundPicTex], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.

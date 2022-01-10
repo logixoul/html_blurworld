@@ -8,6 +8,6 @@ var tsProject = ts.createProject("tsconfig.json");
 exports.default = function() {
   return tsProject.src()
   	.pipe(tsProject()).js
-	//.pipe(concat("concatted.js"))
+	.pipe(concat("concatted.js"))
 	.pipe(gulp.dest("built"));
 };

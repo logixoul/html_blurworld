@@ -40,6 +40,8 @@ function initStateTex() {
 
 initStateTex();
 
+const backgroundPicTex = new THREE.TextureLoader().load( 'assets/background.jpg' );
+
 document.defaultView!.addEventListener("resize", initStateTex);
 
 const framerateCounter = new FramerateCounter();
@@ -57,8 +59,16 @@ function earlyOut() {
 function doSimulationStep() {
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 	globals.stateTex = ImgProc.blur(globals.stateTex, 0.45, /*releaseFirstInputTex=*/ true);
-	globals.stateTex = shade2([globals.stateTex], `
+	/*globals.stateTex = shade2([globals.stateTex], `
 		_out.r = smoothstep(0.0f, 1.0f, fetch1());
+		`, {
+			releaseFirstInputTex: true
+		});*/
+	globals.stateTex = shade2([globals.stateTex], `
+		float f = fetch1();
+		float fw = fwidth(f);
+		f = smoothstep(.5-fw, .5+fw, f);
+		_out.r = f;
 		`, {
 			releaseFirstInputTex: true
 		});
@@ -78,18 +88,12 @@ function animate(now: DOMHighResTimeStamp) {
 
 	doSimulationStep();
 	
-	var tex2 = shade2([globals.stateTex], `
-		float f = fetch1();
-		float fw = fwidth(f);
-		f = smoothstep(.5-fw, .5+fw, f);
-		_out.r = f;
-		`, {
-			releaseFirstInputTex: false
-		});
+	var tex2 = globals.stateTex;
 	tex2 = ImgProc.extrude(tex2, globals.scale, /*releaseFirstInputTex=*/ true);
-	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
+	shade2([tex2?.get()!, backgroundPicTex], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
 		d *= 3.0f;
+		//_out.rgb = fetch3(tex2);
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
 		if(d < -1.0)
 			_out.rgb += vec3(max(-d-.3, 0.0f)); // specular

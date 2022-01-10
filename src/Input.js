@@ -78,3 +78,13 @@ document.addEventListener("touchmove", e => {
 	drawLine(pos, lastTouchPos);
 	lastTouchPos = pos;
 });
+
+document.addEventListener("keydown", e => {
+	const char = e.code.toLowerCase();
+	globals.keysHeld[char] = true;
+});
+
+document.addEventListener("keyup", e => {
+	const char = e.code.toLowerCase();
+	globals.keysHeld[char] = false;
+});

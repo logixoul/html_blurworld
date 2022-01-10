@@ -1,5 +1,5 @@
 import * as THREE from '../lib/node_modules/three/src/Three.js';
-import { shade2 } from './shade.js';
+import { shade2, lx } from './shade.js';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
 import './Input.js'; // for side fx
@@ -21,8 +21,8 @@ function initStateTex() {
 	img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
 	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
-		THREE.FloatType);
-		//THREE.UnsignedByteType);
+			THREE.FloatType);
+			//THREE.UnsignedByteType);
 
 	globals.stateTex.generateMipmaps = false;
 
@@ -47,23 +47,18 @@ document.defaultView!.addEventListener("resize", initStateTex);
 const framerateCounter = new FramerateCounter();
 
 // for debugging
-function earlyOut() {
-	shade2([globals.stateTex], `
+function drawToScreen(inputTex : lx.Texture, releaseFirstInputTex : boolean) {
+	shade2([inputTex], `
 		_out.rgb = fetch3();
 		`, {
 			toScreen: true,
-			releaseFirstInputTex: false
+			releaseFirstInputTex: releaseFirstInputTex
 		});
 }
 
 function doSimulationStep() {
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
 	globals.stateTex = ImgProc.blur(globals.stateTex, 0.45, /*releaseFirstInputTex=*/ true);
-	/*globals.stateTex = shade2([globals.stateTex], `
-		_out.r = smoothstep(0.0f, 1.0f, fetch1());
-		`, {
-			releaseFirstInputTex: true
-		});*/
 	globals.stateTex = shade2([globals.stateTex], `
 		float f = fetch1();
 		float fw = fwidth(f);
@@ -83,13 +78,14 @@ function animate(now: DOMHighResTimeStamp) {
 	else
 		requestAnimationFrame( animate );
 	
-	/*earlyOut();
-	return;*/
-
 	doSimulationStep();
 	
-	var tex2 = globals.stateTex;
-	tex2 = ImgProc.extrude(tex2, globals.scale, /*releaseFirstInputTex=*/ true);
+	/*if(globals.keysHeld["1"]) {
+		drawToScreen(globals.stateTex, false);
+		return;
+	}*/
+
+	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
 	shade2([tex2?.get()!, backgroundPicTex], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
 		d *= 3.0f;

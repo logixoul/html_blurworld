@@ -1,8 +1,8 @@
-import * as THREE from '../lib/node_modules/three/src/Three.js';
+import * as THREE from 'three';
 import { renderer } from './util.js';
 import * as util from './util.js';
-import { SafeMap } from './SafeMap.js';
-import * as System from './System.js';
+import { SafeMap } from './SafeMap';
+import * as System from './System';
 
 type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | lx.Texture);
 

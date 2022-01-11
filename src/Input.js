@@ -1,7 +1,7 @@
 import { globals } from "./Globals.js"
-import * as THREE from '../lib/node_modules/three/src/Three.js';
+import * as THREE from '../node_modules/three/src/Three.js';
 import * as util from './util.js';
-import * as KeysHeld from './KeysHeld.js'
+import * as KeysHeld from './KeysHeld'
 
 var scene = new THREE.Scene();
 

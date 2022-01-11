@@ -1,12 +1,12 @@
-import * as THREE from '../lib/node_modules/three/src/Three.js';
-import { shade2, lx } from './shade.js';
+import * as THREE from 'three';
+import { shade2, lx } from './shade';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
 import './Input.js'; // for side fx
 import * as util from './util.js';
 import { Image } from "./Image.js";
-import { FramerateCounter } from "./FramerateCounter.js"
-import * as KeysHeld from './KeysHeld.js'
+import { FramerateCounter } from "./FramerateCounter"
+import * as KeysHeld from './KeysHeld'
 
 function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
@@ -81,13 +81,14 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	doSimulationStep();
 	
+	console.log("delme3");
 	if(KeysHeld.global_keysHeld["digit1"]) {
 		drawToScreen(globals.stateTex, false);
 		return;
 	}
 
 	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
-	shade2([tex2?.get()!, backgroundPicTex], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
+	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
 		d *= 3.0f;
 		//_out.rgb = fetch3(tex2);

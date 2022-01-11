@@ -1,6 +1,17 @@
 {
 	"version": "2.0.0",
 	"tasks": [
+		{
+			"type": "shell",
+			"label": "webpack dev",
+			"command": "npx",
+            "args": [
+				"run build"
+            ],
+			"isShellCommand": true,
+			"taskName": "npx run build",
+			"isBuildCommand": true
+		}
 		/*{
 			"type": "typescript",
 			"tsconfig": "tsconfig.json",
@@ -13,7 +24,7 @@
 			},
 			"label": "tsc: build - tsconfig.json"
 		},*/
-		{
+		/*{
 			"type": "shell",
 			"label": "build",
 			"command": "gulp",
@@ -29,6 +40,6 @@
 				"kind": "build",
 				"isDefault": true
 			}
-		}
+		}*/
 	]
 }

@@ -1,4 +1,4 @@
-import * as THREE from '../lib/node_modules/three/src/Three.js';
+import * as THREE from 'three';
 
 var mousePos : THREE.Vector2;
 

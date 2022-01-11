@@ -1,6 +1,6 @@
-import { shade2, textureCache, lx } from "./shade.js";
+import { shade2, textureCache, lx } from "./shade";
 import * as util from "./util.js";
-import * as THREE from '../lib/node_modules/three/src/Three.js';
+import * as THREE from '../node_modules/three/src/Three.js';
 
 // from adaptive-contrast-stretching-cpp-2
 export function fastBlur(tex, releaseFirstInputTex) {

@@ -81,7 +81,7 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	doSimulationStep();
 	
-	console.log("delme3");
+	console.log("delme8");
 	if(KeysHeld.global_keysHeld["digit1"]) {
 		drawToScreen(globals.stateTex, false);
 		return;

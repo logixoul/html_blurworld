@@ -11,4 +11,9 @@ module.exports = merge(common, {
         },
         hot: true,
     },
+    output: {
+     filename: 'bundle.js',
+     path: path.resolve(__dirname, 'build'),
+     clean: true,
+   },
 })

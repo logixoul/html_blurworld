@@ -3,14 +3,13 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"label": "webpack dev",
-			"command": "npx",
+			"label": "Run development server",
+			"command": "npm",
             "args": [
-				"run build"
+				"run dev"
             ],
 			"isShellCommand": true,
-			"taskName": "npx run build",
-			"isBuildCommand": true
+			"taskName": "Run development server",
 		}
 		/*{
 			"type": "typescript",

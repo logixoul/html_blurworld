@@ -90,7 +90,7 @@ function animate(now: DOMHighResTimeStamp) {
 	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
 	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
-		d *= 3.0f;
+		d *= 6.0f;
 		//_out.rgb = fetch3(tex2);
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
 		if(d < -1.0)

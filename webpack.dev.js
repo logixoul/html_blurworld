@@ -7,13 +7,8 @@ module.exports = merge(common, {
     devtool: 'eval-source-map',
     devServer: {
         static: {
-            directory: path.join(__dirname, './'),
+            directory: path.join(__dirname, './dist'),
         },
         hot: true,
     },
-    output: {
-     filename: 'bundle.js',
-     path: path.resolve(__dirname, '.'),
-     clean: true,
-   },
 })

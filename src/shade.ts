@@ -48,8 +48,6 @@ export namespace lx {
 }
 
 function mapType(value: any) {
-	if(value instanceof THREE.Uniform)
-		value = value.value;
 	if(value instanceof THREE.Vector2)
 		return 'vec2';
 	else if(typeof value === "number")
@@ -317,6 +315,11 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	});
 	Object.keys(params.uniforms!).forEach(key => { // todo: do i need the '!'?
 		var value=params.uniforms![key].value;
+		// for things like `uniforms: { mul: new THREE.Uniform(amount) }`
+		if(value instanceof THREE.Uniform) { // todo: improve this ugliness
+			value = value.value;
+			params.uniforms![key].value = value;
+		}
 		uniformsString += "uniform " + mapType(value) + " " + key + ";";
 	});
 

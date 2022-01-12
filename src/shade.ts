@@ -183,7 +183,7 @@ class TextureCache {
 
 		var keyString : string = texWrapper.toString();
 		this.infos.set(keyString, new TextureInfo(key));
-		this.infos.safeGet(keyString).useCount = 1;
+		this.infos.checkedGet(keyString).useCount = 1;
 
 		this.numTexturesDbg++;
 		return texWrapper;
@@ -224,11 +224,11 @@ class TextureCache {
 			return tex;
 		}
 		else {
-			const vec = this.cache.safeGet(keyString);
+			const vec = this.cache.checkedGet(keyString);
 			
 			for(let i = 0; i < vec.length; i++) {
 				let tex : lx.Texture = vec[i];
-				var texInfo = this.infos.safeGet(tex.toString());
+				var texInfo = this.infos.checkedGet(tex.toString());
 				if(texInfo.useCount == 0) {
 					console_log("\treusing");
 					this._setDefaults(tex.get());

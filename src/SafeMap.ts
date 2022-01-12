@@ -5,7 +5,7 @@ export class SafeMap<TK, TV> extends Map<TK, TV> {
     constructor() {
         super();
     }
-    safeGet(key : TK) : TV {
+    checkedGet(key : TK) : TV {
         if(!super.has(key))
             throw "lxError";
         return super.get(key)!;

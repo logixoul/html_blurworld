@@ -1,5 +1,5 @@
 import { shade2, textureCache, lx } from "./shade";
-import * as util from "./util.js";
+import * as util from "./util";
 import * as THREE from '../node_modules/three/src/Three.js';
 
 // from adaptive-contrast-stretching-cpp-2
@@ -63,7 +63,7 @@ export function blur(tex, width, releaseFirstInputTex) {
 	return tex2;
 }
 
-function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
+export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 	state = blur(state, 1.0, releaseFirstInputTex);
 	state = shade2([state, inTex], `
 		float state = fetch1(tex1);
@@ -83,6 +83,7 @@ export function extrude(inTex, scale, releaseFirstInputTex) {
 	const iters = 30;
 
 	var state = util.cloneTex(inTex);
+
 
 	for(let i = 0; i < iters; i++)
 	{

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { renderer } from './util.js';
-import * as util from './util.js';
+import { renderer } from './util';
+import * as util from './util';
 import { SafeMap } from './SafeMap';
 import * as System from './System';
 

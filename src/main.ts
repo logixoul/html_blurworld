@@ -3,10 +3,11 @@ import { shade2, lx } from './shade';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
 import './Input.js'; // for side fx
-import * as util from './util.js';
+import * as util from './util';
 import { Image } from "./Image.js";
-import { FramerateCounter } from "./FramerateCounter"
-import * as KeysHeld from './KeysHeld'
+import { FramerateCounter } from "./FramerateCounter";
+import * as KeysHeld from './KeysHeld';
+import * as PresentationForIashu from './presentationForIashu';
 
 function initStateTex() {
 	var documentW = window.innerWidth * window.devicePixelRatio;
@@ -40,22 +41,13 @@ function initStateTex() {
 }
 
 initStateTex();
+PresentationForIashu.init();
 
 const backgroundPicTex = new THREE.TextureLoader().load( 'assets/background.jpg' );
 
 document.defaultView!.addEventListener("resize", initStateTex);
 
 const framerateCounter = new FramerateCounter();
-
-// for debugging
-function drawToScreen(inputTex : lx.Texture, releaseFirstInputTex : boolean) {
-	shade2([inputTex], `
-		_out.rgb = fetch3();
-		`, {
-			toScreen: true,
-			releaseFirstInputTex: releaseFirstInputTex
-		});
-}
 
 function doSimulationStep() {
 	globals.stateTex = ImgProc.zeroOutBorders(globals.stateTex, /*releaseFirstInputTex=*/ true);
@@ -83,7 +75,7 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	console.log("delme11");
 	if(KeysHeld.global_keysHeld["digit1"]) {
-		drawToScreen(globals.stateTex, false);
+		util.drawToScreen(globals.stateTex, false);
 		return;
 	}
 

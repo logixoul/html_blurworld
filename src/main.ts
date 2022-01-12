@@ -38,12 +38,15 @@ function initStateTex() {
 	if(window.location.hostname !== "localhost") {
 		document.getElementById("framerate")!.style.display = "none";
 	}
+
+	for(let i =0; i < 100; i++)
+		doSimulationStep(); // tmp for iashu demo
 }
 
 initStateTex();
 PresentationForIashu.init();
 
-const backgroundPicTex = new THREE.TextureLoader().load( 'assets/background.jpg' );
+//const backgroundPicTex = new THREE.TextureLoader().load( 'assets/background.jpg' );
 
 document.defaultView!.addEventListener("resize", initStateTex);
 

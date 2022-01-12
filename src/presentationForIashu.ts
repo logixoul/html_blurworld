@@ -13,15 +13,20 @@ export function init() {
     });
 }
 
-function extrude_oneIterationForPresentation(state: lx.Texture, inTex : lx.Texture) {
-	state = ImgProc.extrude_oneIteration(state, inTex);
-	return shade2([state],`
-		_out.rgb = fetch3() * .5;
+function mul(inTex : lx.Texture, amount : number, releaseFirstInputTex: boolean) {
+    return shade2([inTex],`
+		_out.rgb = fetch3() * mul;
 	`,
 	{
-		releaseFirstInputTex: true
+		releaseFirstInputTex: releaseFirstInputTex,
+        uniforms: { mul: new THREE.Uniform(amount) }
 	}
 	)!;
+}
+
+function extrude_oneIterationForPresentation(state: lx.Texture, inTex : lx.Texture) {
+	state = ImgProc.extrude_oneIteration(state, inTex);
+	return mul(state, .5, true);
 }
 
 function upscale() {
@@ -41,7 +46,7 @@ function extrudeForPresentation(inTex : lx.Texture) {
 	{
 		state = extrude_oneIterationForPresentation(state, inTex);
 	}
-	util.saveImage(state);
+    util.saveImage(state);
 	for(let i = 0; i < 30; i++)
 	{
 		state = extrude_oneIterationForPresentation(state, inTex);

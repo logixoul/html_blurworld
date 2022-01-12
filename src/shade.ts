@@ -48,6 +48,8 @@ export namespace lx {
 }
 
 function mapType(value: any) {
+	if(value instanceof THREE.Uniform)
+		value = value.value;
 	if(value instanceof THREE.Vector2)
 		return 'vec2';
 	else if(typeof value === "number")

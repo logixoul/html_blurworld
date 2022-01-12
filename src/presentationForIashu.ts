@@ -24,13 +24,25 @@ function mul(inTex : lx.Texture, amount : number, releaseFirstInputTex: boolean)
 	)!;
 }
 
-function extrude_oneIterationForPresentation(state: lx.Texture, inTex : lx.Texture, releaseFirstInputTex: boolean) {
-	state = ImgProc.extrude_oneIteration(state, inTex, releaseFirstInputTex);
-	return mul(state, .5, true);
+function local_extrude_oneIteration(state : lx.Texture, inTex : lx.Texture, releaseFirstInputTex : boolean) {
+	state = ImgProc.blur(state, 1.0, releaseFirstInputTex)!;
+	state = shade2([state, inTex], `
+		float state = fetch1(tex1);
+		float binary = fetch1(tex2);
+		state *= binary;
+		state += binary * .2;
+		//state = (state+1.0f) * binary;
+		_out.r = state;`
+		, {
+			releaseFirstInputTex: true
+		}
+		)!;
+	return state;
 }
 
-function upscale() {
-
+function extrude_oneIterationForPresentation(state: lx.Texture, inTex : lx.Texture, releaseFirstInputTex: boolean) {
+	state = local_extrude_oneIteration(state, inTex, releaseFirstInputTex);
+	return mul(state, 1.0 / 1.2, true);
 }
 
 function extrudeForPresentation(inTex : lx.Texture) {
@@ -41,15 +53,15 @@ function extrudeForPresentation(inTex : lx.Texture) {
 		scale: new THREE.Vector2(.3, .3),
 		releaseFirstInputTex: true
 	})!;
-	util.saveImage(state);
-	for(let i = 0; i < 30; i++)
+	util.appendImageToHtml(state);
+	for(let i = 0; i < 1; i++)
 	{
 		state = extrude_oneIterationForPresentation(state, inTex, true);
 	}
-    util.saveImage(mul(state, 2, false));
-	for(let i = 0; i < 30; i++)
+    util.appendImageToHtml(mul(state, 1, false));
+	for(let i = 0; i < 10; i++)
 	{
 		state = extrude_oneIterationForPresentation(state, inTex, true);
 	}
-	util.saveImage(mul(state, 2, false));
+	util.appendImageToHtml(mul(state, 1, false));
 }

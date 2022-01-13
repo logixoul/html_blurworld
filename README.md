@@ -8,6 +8,8 @@ How to run (with live reloading on code edits):
     cd html_blurworld
     npm install
     npm run dev
+    
+... and open http://localhost:8080/ in your browser.
   
 Then, if you want to build for uploading to a server:
 

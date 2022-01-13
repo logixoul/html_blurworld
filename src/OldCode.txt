@@ -1,0 +1,5 @@
+			<img id="menuToggle" src="Hamburger_icon.svg.png" width="50" height="50" />
+			<div id="toToggle">
+				<input type="checkbox" id="limitFramerate" name="limitFramerate" checked>
+  				<label for="limitFramerate">Limit framerate</label>
+			<div>

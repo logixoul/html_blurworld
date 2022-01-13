@@ -10,10 +10,11 @@ import * as KeysHeld from './KeysHeld';
 import * as PresentationForIashu from './presentationForIashu';
 
 function initStateTex() {
-	var documentW = window.innerWidth * window.devicePixelRatio;
-	var documentH = window.innerHeight * window.devicePixelRatio;
+	var documentW = window.innerWidth;
+	var documentH = window.innerHeight;
 	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
 	//globals.scale /= 4;
+	
 	
 	var img = new Image(
 		Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
@@ -28,8 +29,9 @@ function initStateTex() {
 	globals.stateTex.needsUpdate = true;
 	globals.stateTex.generateMipmaps = false;
 
-	/*globals.stateTex = shade2([globals.stateTex],
-		`_out.r = fetch1();`, { itype: THREE.UnsignedByteType });*/
+	globals.stateTex = shade2([globals.stateTex],
+		`_out.r = fetch1();`, { itype: THREE.HalfFloatType,
+		releaseFirstInputTex: true });
 
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
 	
@@ -76,7 +78,6 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	doSimulationStep();
 	
-	console.log("delme11");
 	if(KeysHeld.global_keysHeld["digit1"]) {
 		util.drawToScreen(globals.stateTex, false);
 		return;

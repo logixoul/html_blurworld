@@ -97,8 +97,7 @@ export function extrude(inTex, scale, releaseFirstInputTex) {
 			releaseFirstInputTex: true
 		});
 	// blur to fix upscale-artefacts
-	for(let i = 0; i < 5; i++) // todo: do this at recursive resolutions
-		state = blur(state, 1.0, true);
+	state = blur(state, 1.0, true);
 	// make edges sharp again
 	state = shade2([state, inTex], `
 		float f = fetch1(tex2);

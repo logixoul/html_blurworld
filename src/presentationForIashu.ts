@@ -30,8 +30,7 @@ function local_extrude_oneIteration(state : lx.Texture, inTex : lx.Texture, rele
 		float state = fetch1(tex1);
 		float binary = fetch1(tex2);
 		state *= binary;
-		state += binary * .2;
-		//state = (state+1.0f) * binary;
+		state = .5 * (state + binary);
 		_out.r = state;`
 		, {
 			releaseFirstInputTex: true
@@ -59,7 +58,7 @@ function extrudeForPresentation(inTex : lx.Texture) {
 		state = extrude_oneIterationForPresentation(state, inTex, true);
 	}
     util.appendImageToHtml(mul(state, 1, false));
-	for(let i = 0; i < 10; i++)
+	for(let i = 0; i < 100; i++)
 	{
 		state = extrude_oneIterationForPresentation(state, inTex, true);
 	}

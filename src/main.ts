@@ -13,7 +13,7 @@ function initStateTex() {
 	var documentW = window.innerWidth;
 	var documentH = window.innerHeight;
 	globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
-	//globals.scale /= 4;
+	//globals.scale = 1;
 	
 	
 	var img = new Image(
@@ -30,7 +30,9 @@ function initStateTex() {
 	globals.stateTex.generateMipmaps = false;
 
 	globals.stateTex = shade2([globals.stateTex],
-		`_out.r = fetch1();`, { itype: THREE.HalfFloatType,
+		`_out.r = fetch1();`, { itype:
+			//THREE.UnsignedByteType,
+			THREE.HalfFloatType,
 		releaseFirstInputTex: true });
 
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
@@ -86,10 +88,10 @@ function animate(now: DOMHighResTimeStamp) {
 	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
 	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
-		d *= 12.0f;
+		d *= 102.0f;
 		//_out.rgb = fetch3(tex2);
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
-		if(d < -0.4)
+		if(d < -0.09)
 			_out.rgb += vec3(max(-d-.1, 0.0f)) + .5; // specular
 		else if(d>0.0f)_out.rgb /= 1.0+d; // shadows
 		_out.rgb /= _out.rgb + 1.0f;

@@ -79,7 +79,7 @@ export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 }
 
 export function extrude(inTex, scale, releaseFirstInputTex) {
-	const iters = 30;
+	const iters = 10;
 
 	var state = util.cloneTex(inTex);
 

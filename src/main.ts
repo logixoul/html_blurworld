@@ -32,7 +32,8 @@ function initStateTex() {
 	globals.stateTex = shade2([globals.stateTex],
 		`_out.r = fetch1();`, { itype:
 			//THREE.UnsignedByteType,
-			THREE.HalfFloatType,
+			//THREE.HalfFloatType,
+			THREE.FloatType,
 		releaseFirstInputTex: true });
 
 	util.renderer.setSize( window.innerWidth, window.innerHeight );
@@ -93,9 +94,9 @@ function animate(now: DOMHighResTimeStamp) {
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
 		const float specThres = -0.09;
 		float specular = max(-d-.1, 0.0f) + .5;
-		float fw = fwidth(d) * 0.0;
-		//specular *= smoothstep(specThres - fw/2.0, specThres + fw/2.0, specular);
-		specular *= 1.0-step(specThres, d);
+		float fw = fwidth(d);
+		specular *= 1.0-smoothstep(specThres - fw/2.0, specThres + fw/2.0, d);
+		//specular *= 1.0-step(specThres, d);
 		//if(d < -0.09)
 			_out.rgb += specular * vec3(1); // specular
 		if(d>0.0f)_out.rgb /= 1.0+d; // shadows

@@ -91,9 +91,14 @@ function animate(now: DOMHighResTimeStamp) {
 		d *= 102.0f;
 		//_out.rgb = fetch3(tex2);
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
-		if(d < -0.09)
-			_out.rgb += vec3(max(-d-.1, 0.0f)) + .5; // specular
-		else if(d>0.0f)_out.rgb /= 1.0+d; // shadows
+		const float specThres = -0.09;
+		float specular = max(-d-.1, 0.0f) + .5;
+		float fw = fwidth(d) * 0.0;
+		//specular *= smoothstep(specThres - fw/2.0, specThres + fw/2.0, specular);
+		specular *= 1.0-step(specThres, d);
+		//if(d < -0.09)
+			_out.rgb += specular * vec3(1); // specular
+		if(d>0.0f)_out.rgb /= 1.0+d; // shadows
 		_out.rgb /= _out.rgb + 1.0f;
 		//_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 		`, {

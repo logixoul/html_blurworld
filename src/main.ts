@@ -96,7 +96,6 @@ function animate(now: DOMHighResTimeStamp) {
 		float specular = max(-d-.1, 0.0f) + .5;
 		float fw = fwidth(d);
 		specular *= 1.0-smoothstep(specThres - fw/2.0, specThres + fw/2.0, d);
-		//specular *= 1.0-step(specThres, d);
 		//if(d < -0.09)
 			_out.rgb += specular * vec3(1); // specular
 		if(d>0.0f)_out.rgb /= 1.0+d; // shadows

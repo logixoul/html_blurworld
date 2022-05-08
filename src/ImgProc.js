@@ -69,7 +69,7 @@ export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 		float state = fetch1(tex1);
 		float binary = fetch1(tex2);
 		state *= binary;
-		state = .5 * (binary+state);
+		//state = .5 * (binary+state);
 		_out.r = state;`
 		, {
 			releaseFirstInputTex: true
@@ -79,7 +79,7 @@ export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 }
 
 export function extrude(inTex, scale, releaseFirstInputTex) {
-	const iters = 10;
+	const iters = window.iters || 10;
 
 	var state = util.cloneTex(inTex);
 

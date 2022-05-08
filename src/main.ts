@@ -81,18 +81,26 @@ function animate(now: DOMHighResTimeStamp) {
 	
 	doSimulationStep();
 	
+	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
 	if(KeysHeld.global_keysHeld["digit1"]) {
-		util.drawToScreen(globals.stateTex, false);
+		var toDraw = shade2([tex2!], `
+		float state = fetch1(tex1);
+		state = .5 * state;
+		_out.r = state;`
+		, {
+			releaseFirstInputTex: true
+		}
+		);
+		util.drawToScreen(toDraw, false);
 		return;
 	}
 
-	var tex2 = ImgProc.extrude(globals.stateTex, globals.scale, /*releaseFirstInputTex=*/ false);
 	shade2([tex2?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
 		float d = fetch1() - fetch1(tex1, tc - vec2(0, tsize1.y));
 		d *= 102.0f;
 		//_out.rgb = fetch3(tex2);
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
-		const float specThres = -0.09;
+		const float specThres = -0.02;
 		float specular = max(-d-.1, 0.0f) + .5;
 		float fw = fwidth(d);
 		specular *= 1.0-smoothstep(specThres - fw/2.0, specThres + fw/2.0, d);

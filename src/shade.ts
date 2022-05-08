@@ -273,6 +273,8 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		vshaderExtra: options.vshaderExtra || "",
 		lib: options.lib || "",
 	};
+	if(processedOptions.itype !== THREE.FloatType)
+		console.log("processedOptions.itype=" + processedOptions.itype);
 
 	var renderTarget;
 	if(options.toScreen) {

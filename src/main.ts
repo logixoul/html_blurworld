@@ -26,8 +26,10 @@ function initStateTex() {
 	globals.stateTex = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
 			THREE.FloatType);
 			//THREE.UnsignedByteType);
-	globals.stateTex.needsUpdate = true;
 	globals.stateTex.generateMipmaps = false;
+	globals.stateTex.minFilter = THREE.LinearFilter;
+	globals.stateTex.magFilter = THREE.LinearFilter;
+	globals.stateTex.needsUpdate = true;
 
 	globals.stateTex = shade2([globals.stateTex],
 		`_out.r = fetch1();`, { itype:

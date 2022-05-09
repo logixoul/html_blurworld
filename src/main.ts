@@ -87,7 +87,7 @@ function animate(now: DOMHighResTimeStamp) {
 	if(KeysHeld.global_keysHeld["digit1"]) {
 		var toDraw = shade2([tex2!], `
 		float state = fetch1(tex1);
-		state = .5 * state;
+		//state = .5 * state;
 		_out.r = state;`
 		, {
 			releaseFirstInputTex: true

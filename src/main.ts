@@ -102,7 +102,7 @@ function animate(now: DOMHighResTimeStamp) {
 		d *= 102.0f;
 		//_out.rgb = fetch3(tex2);
 		_out.rgb = vec3(.9, .9, .9);//vec3(0,.2,.5);
-		const float specThres = -0.02;
+		const float specThres = -0.0;
 		float specular = max(-d-.1, 0.0f) + .5;
 		float fw = fwidth(d);
 		specular *= 1.0-smoothstep(specThres - fw/2.0, specThres + fw/2.0, d);

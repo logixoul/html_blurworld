@@ -14,9 +14,11 @@ let assetsLoaded : boolean = false;
 let backgroundPicTexOrig : lx.Texture = new lx.Texture(new THREE.TextureLoader().load( 'assets/milkyway.png', (tex) => {
 	backgroundPicTex = shade2([backgroundPicTexOrig], `
 	_out.rgb = fetch3();
-	_out.rgb = pow(_out.rgb, vec3(2.2));
+	_out.rgb /= 1.0 - 0.99*_out.rgb;
+	//_out.rgb = pow(_out.rgb, vec3(2.2));
 	`, {
-		releaseFirstInputTex: false // todo: fix memory leak
+		releaseFirstInputTex: false, // todo: fix memory leak
+		itype: THREE.FloatType
 	})!
 	assetsLoaded = true;
 }));
@@ -143,9 +145,9 @@ function animate(now: DOMHighResTimeStamp) {
 	const stateTex0Shrunken = shade2([globals.stateTex0, globals.stateTex1], `
 		_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
 		`)!;
-	const stateTex1Shrunken = shade2([globals.stateTex1, globals.stateTex0], `
+	/*const stateTex1Shrunken = shade2([globals.stateTex1, globals.stateTex0], `
 		_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
-		`)!;
+		`)!;*/
 	/*const stateTexIntersection = shade2([globals.stateTex1, globals.stateTex0], `
 		_out.r = fetch1(tex1) * fetch1(tex2);
 		`)!;*/
@@ -177,44 +179,77 @@ function animate(now: DOMHighResTimeStamp) {
 		vec3 col0 = fetch3(tex1);
 		vec3 col1 = fetch3(tex2);
 		if(col0.r < 0.0 && col1.r < 0.0) {
-			_out.rgb = fetch3(tex3); // use background where no data
+			_out.rgb = vec3(-1.0); // use sentinel value for "no data"
 			return;
 		}
 		col0 = max(col0, vec3(0.0));
 		col1 = max(col1, vec3(0.0));
 		_out.rgb = col0 + col1;
 		`);
-	tex3d_0?.dispose();
-	tex3d_1?.dispose();
 	extruded0?.dispose();
 	extruded1?.dispose();
-	let tex3dThresholded = shade2([tex3d?.get()!], `
+	/*let tex3dThresholded = shade2([tex3d?.get()!], `
 		vec3 col = fetch3();
-		col *= step(1.0, dot(col, vec3(1.0/3.0)));
+		//col *= step(1.0, dot(col, vec3(1.0/3.0)));
 		_out.rgb = col;
+		`);*/
+	let tex3dToBlur = shade2([globals.stateTex0?.get()!, globals.stateTex1?.get()!], `
+		vec3 col0 = fetch3(tex1);
+		vec3 col1 = fetch3(tex2);
+		if(col0 == vec3(0.0) && col1 == vec3(0.0)) {
+			_out.rgb = vec3(0.0); // use black where no data
+		} else {
+			_out.rgb = vec3(1.0);
+		}
 		`);
-	let tex3dBlur = util.cloneTex(tex3dThresholded);
-	let tex3dBlurCollected = util.cloneTex(tex3dThresholded);
-	for(let i = 0; i < 5; i++) {
+	tex3d_0?.dispose();
+	tex3d_1?.dispose();
+	let tex3dBlur = util.cloneTex(tex3dToBlur);
+	let tex3dBlurCollected = util.cloneTex(tex3dToBlur);
+	tex3dBlurCollected = shade2([tex3dBlurCollected?.get()!], `
+		_out.rgb = vec3(0.0); // zero it out
+		`);
+	for(let i = 0; i < 3; i++) {
 		tex3dBlur = ImgProc.scale(tex3dBlur, 0.5, true);
 		tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, true);
 		tex3dBlurCollected = shade2([tex3dBlurCollected?.get()!, tex3dBlur?.get()!], `
-			_out.rgb = mix(fetch3(tex1), fetch3(tex2), .2);
+			_out.rgb = fetch3(tex1) + fetch3(tex2);
 			`, {
 				releaseFirstInputTex: true
 			});
 	}
-	let tex3dBloom = shade2([tex3d?.get()!, tex3dBlurCollected?.get()!], `
+	/*let tex3dBloom = shade2([tex3d?.get()!, tex3dBlurCollected?.get()!], `
 		_out.rgb = fetch3(tex1) * 1.0 + fetch3(tex2) * 1.0;
 		_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 		_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 		`, {
 			releaseFirstInputTex: false
+		});*/
+	let tex3dShadowed = shade2([tex3d?.get()!, tex3dBlurCollected?.get()!, backgroundPicTex?.get()!], `
+		vec3 col = fetch3(tex1);
+		float shadow = fetch1(tex2);
+		vec3 background = fetch3(tex3);
+		if(col.r < 0.0) {
+			col = background; // use background where no data
+			col /= 1.0 + pow(shadow, 4.0);
+		} else {
+			//col += background * 0.02;
+		}
+		_out.rgb = col;
+		_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
+		_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
+		`, {
+			releaseFirstInputTex: false
 		});
+	if(KeysHeld.global_keysHeld["keyb"]) {
+		util.drawToScreen(tex3dBlurCollected, true);
+	}
+	//util.drawToScreen(tex3dBlurCollected, false);
+	else
+	util.drawToScreen(tex3dShadowed, true);
 	tex3d?.dispose();
 	tex3dBlur?.dispose();
-	tex3dThresholded?.dispose();
+	tex3dToBlur?.dispose();
 	tex3dBlurCollected?.dispose();
-	util.drawToScreen(tex3dBloom, true);
 }
 requestAnimationFrame(animate);

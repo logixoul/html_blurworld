@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { globals } from './Globals';
-import * as FragmentCompute from './FragmentCompute';
-const { shade2 } = FragmentCompute;
+import * as GpuCompute from './GpuCompute';
 import * as ImgProc from './ImgProc';
 import * as util from './util';
 
@@ -14,8 +13,8 @@ export function init() {
     });
 }
 
-function mul(inTex : FragmentCompute.TextureWrapper, amount : number, releaseFirstInputTex: boolean) {
-    return shade2([inTex],`
+function mul(inTex : GpuCompute.TextureWrapper, amount : number, releaseFirstInputTex: boolean) {
+    return GpuCompute.run([inTex],`
 		_out.rgb = fetch3() * mul;
 	`,
 	{
@@ -25,9 +24,9 @@ function mul(inTex : FragmentCompute.TextureWrapper, amount : number, releaseFir
 	)!;
 }
 
-function local_extrude_oneIteration(state : FragmentCompute.TextureWrapper, inTex : FragmentCompute.TextureWrapper, releaseFirstInputTex : boolean) {
+function local_extrude_oneIteration(state : GpuCompute.TextureWrapper, inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
 	state = ImgProc.blur(state, 1.0, 1.0, releaseFirstInputTex)!;
-	state = shade2([state, inTex], `
+	state = GpuCompute.run([state, inTex], `
 		float state = fetch1(tex1);
 		float binary = fetch1(tex2);
 		state *= binary;
@@ -40,14 +39,14 @@ function local_extrude_oneIteration(state : FragmentCompute.TextureWrapper, inTe
 	return state;
 }
 
-function extrude_oneIterationForPresentation(state: FragmentCompute.TextureWrapper, inTex : FragmentCompute.TextureWrapper, releaseFirstInputTex: boolean) {
+function extrude_oneIterationForPresentation(state: GpuCompute.TextureWrapper, inTex : GpuCompute.TextureWrapper, releaseFirstInputTex: boolean) {
 	state = local_extrude_oneIteration(state, inTex, releaseFirstInputTex);
 	return mul(state, 1.0 / 1.2, true);
 }
 
-function extrudeForPresentation(inTex : FragmentCompute.TextureWrapper) {
-	var state : FragmentCompute.TextureWrapper = util.cloneTex(inTex)!;
-	state = shade2([state], `
+function extrudeForPresentation(inTex : GpuCompute.TextureWrapper) {
+	var state : GpuCompute.TextureWrapper = util.cloneTex(inTex)!;
+	state = GpuCompute.run([state], `
 		_out.rgb = fetch3();
 	`, {
 		scale: new THREE.Vector2(.3, .3),

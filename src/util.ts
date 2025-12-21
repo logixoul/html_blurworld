@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import * as FragmentCompute from './FragmentCompute'
-const { shade2 } = FragmentCompute;
+import * as GpuCompute from './GpuCompute'
+
 
 export var renderer = new THREE.WebGLRenderer({antialias: true });
 document.body.appendChild( renderer.domElement );
 
 export function cloneTex(inTex : any) {
-	return shade2([inTex], `_out = fetch4();`, { releaseFirstInputTex: false});
+	return GpuCompute.run([inTex], `_out = fetch4();`, { releaseFirstInputTex: false});
 }
 
 export function unpackTex(t : any) {
@@ -16,7 +16,7 @@ export function unpackTex(t : any) {
 }
 
 export function drawToScreen(inputTex : any, releaseFirstInputTex : boolean) {
-	shade2([inputTex], `
+	GpuCompute.run([inputTex], `
 		vec2 texSize = vec2(textureSize(tex1, 0));
 		_out.rgb = texelFetch(tex1, ivec2(tc * texSize), 0).rgb;
 		`, {
@@ -25,7 +25,7 @@ export function drawToScreen(inputTex : any, releaseFirstInputTex : boolean) {
 		});
 }
 
-export function appendImageToHtml(tex : FragmentCompute.TextureWrapper) {
+export function appendImageToHtml(tex : GpuCompute.TextureWrapper) {
 	var oldMagFilter = tex.get().magFilter;
 	tex.magFilter = THREE.NearestFilter;
 	drawToScreen(tex, false);

@@ -283,16 +283,15 @@ interface ShadeOpts {
 	dispose?: Array<TextureUnion>,
 }
 
-export function shade2ToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
-	shade2_base(texs, fshader, { ...options, toScreen: true });
+export function computeToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
+	compute_base(texs, fshader, { ...options, toScreen: true });
 }
 
-export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper {
-	return shade2_base(texs, fshader, options)!;
+export function run(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper {
+	return compute_base(texs, fshader, options)!;
 }
 
-
-export function shade2_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
+export function compute_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
 	const wrappedTexs = texs.map(t => new TextureWrapper(t));
 
 	var processedOptions = {

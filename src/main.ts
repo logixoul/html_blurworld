@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import * as FragmentCompute from './FragmentCompute';
-const { shade2 } = FragmentCompute;
+import * as GpuCompute from './GpuCompute';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
 import { Input } from './Input';
@@ -12,17 +11,17 @@ import * as PresentationForIashu from './presentationForIashu';
 import * as System from './System';
 
 export class App {
-	private backgroundPicTex!: FragmentCompute.TextureWrapper;
+	private backgroundPicTex!: GpuCompute.TextureWrapper;
 	private assetsLoaded: boolean = false;
-	private backgroundPicTexOrig: FragmentCompute.TextureWrapper;
+	private backgroundPicTexOrig: GpuCompute.TextureWrapper;
 	private framerateCounter: FramerateCounter;
 	private limitFramerateCheckbox: HTMLInputElement;
 
 	constructor() {
-		this.backgroundPicTexOrig = new FragmentCompute.TextureWrapper(new THREE.TextureLoader().load(
+		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
 			'assets/milkyway.png',
 			() => {
-				this.backgroundPicTex = shade2([this.backgroundPicTexOrig], `
+				this.backgroundPicTex = GpuCompute.run([this.backgroundPicTexOrig], `
 				_out.rgb = fetch3();
 				_out.rgb /= 1.0 - 0.99*_out.rgb;
 				//_out.rgb = pow(_out.rgb, vec3(2.2));
@@ -64,7 +63,7 @@ export class App {
 
 		img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
-		let stateTex : FragmentCompute.TextureUnion = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
+		let stateTex : GpuCompute.TextureUnion = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
 				THREE.FloatType);
 				//THREE.UnsignedByteType);
 		stateTex.generateMipmaps = false;
@@ -72,7 +71,7 @@ export class App {
 		stateTex.magFilter = THREE.LinearFilter;
 		stateTex.needsUpdate = true;
 
-		stateTex = shade2([stateTex],
+		stateTex = GpuCompute.run([stateTex],
 			`_out.r = fetch1();`, { itype:
 				//THREE.UnsignedByteType,
 				//THREE.HalfFloatType,
@@ -87,11 +86,11 @@ export class App {
 		util.renderer.setSize( window.innerWidth, window.innerHeight );
 	};
 
-	private doSimulationStep(inTex : FragmentCompute.TextureWrapper, releaseFirstInputTex : boolean) {
-		let state : FragmentCompute.TextureWrapper = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
+	private doSimulationStep(inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
+		let state : GpuCompute.TextureWrapper = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
 		//state = ImgProc.fastBlur(state, /*releaseFirstInputTex=*/ true);
 		state = ImgProc.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
-		state = shade2([state?.get()], `
+		state = GpuCompute.run([state?.get()], `
 			float f = fetch1();
 			//float fw = fwidth(f)*4.0;
 			//f = smoothstep(.5-fw, .5+fw, f);
@@ -109,9 +108,9 @@ export class App {
 		return state;
 	}
 
-	private make3d(heightmap: FragmentCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
+	private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
-		let tex3d = shade2([heightmap], `
+		let tex3d = GpuCompute.run([heightmap], `
 			float here = fetch1();
 			vec2 d = vec2(
 				here - fetch1(tex1, tc - vec2(tsize1.x, 0)),
@@ -161,7 +160,7 @@ export class App {
 		if(!KeysHeld.global_keysHeld["digit1"]) {
 			globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 			globals.stateTex1 = this.doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
-			const stateTex0Shrunken = shade2([globals.stateTex0, globals.stateTex1], `
+			const stateTex0Shrunken = GpuCompute.run([globals.stateTex0, globals.stateTex1], `
 				_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
 				`,
 				{
@@ -177,7 +176,7 @@ export class App {
 		var extruded0 = ImgProc.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		var extruded1 = ImgProc.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
 		if(KeysHeld.global_keysHeld["digit1"]) {
-			var toDraw = shade2([globals.stateTex0], `
+			var toDraw = GpuCompute.run([globals.stateTex0], `
 			float state = fetch1(tex1);
 			//state = .5 * state;
 			_out.r = state;`
@@ -191,7 +190,7 @@ export class App {
 
 		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(1.5, 0.2, 0.0), { releaseFirstInputTex: true });
 		let tex3d_1 = this.make3d(extruded1, new THREE.Vector3(0.0, 0.2, 1.5), { releaseFirstInputTex: true });
-		let tex3d = shade2([tex3d_0, tex3d_1, this.backgroundPicTex], `
+		let tex3d = GpuCompute.run([tex3d_0, tex3d_1, this.backgroundPicTex], `
 			vec3 col0 = fetch3(tex1);
 			vec3 col1 = fetch3(tex2);
 			if(col0.r < 0.0 && col1.r < 0.0) {
@@ -204,12 +203,12 @@ export class App {
 			`, {
 				releaseFirstInputTex: false
 			});
-		/*let tex3dThresholded = shade2([tex3d], `
+		/*let tex3dThresholded = GpuCompute.run([tex3d], `
 			vec3 col = fetch3();
 			//col *= step(1.0, dot(col, vec3(1.0/3.0)));
 			_out.rgb = col;
 			`);*/
-		let tex3dToBlur = shade2([globals.stateTex0, globals.stateTex1], `
+		let tex3dToBlur = GpuCompute.run([globals.stateTex0, globals.stateTex1], `
 			vec3 col0 = fetch3(tex1);
 			vec3 col1 = fetch3(tex2);
 			if(col0 == vec3(0.0) && col1 == vec3(0.0)) {
@@ -224,7 +223,7 @@ export class App {
 		tex3d_1?.willNoLongerUse();
 		let tex3dBlur = util.cloneTex(tex3dToBlur);
 		let tex3dBlurCollected = util.cloneTex(tex3dToBlur);
-		tex3dBlurCollected = shade2([tex3dBlurCollected], `
+		tex3dBlurCollected = GpuCompute.run([tex3dBlurCollected], `
 			_out.rgb = vec3(0.0); // zero it out
 			`, {
 				releaseFirstInputTex: true
@@ -232,20 +231,20 @@ export class App {
 		for(let i = 0; i < 3; i++) {
 			tex3dBlur = ImgProc.scale(tex3dBlur, 0.5, true);
 			tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, 1.0, true);
-			tex3dBlurCollected = shade2([tex3dBlurCollected, tex3dBlur], `
+			tex3dBlurCollected = GpuCompute.run([tex3dBlurCollected, tex3dBlur], `
 				_out.rgb = fetch3(tex1) + fetch3(tex2);
 				`, {
 					releaseFirstInputTex: true
 				});
 		}
-		/*let tex3dBloom = shade2([tex3d, tex3dBlurCollected], `
+		/*let tex3dBloom = GpuCompute.run([tex3d, tex3dBlurCollected], `
 			_out.rgb = fetch3(tex1) * 1.0 + fetch3(tex2) * 1.0;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {
 				releaseFirstInputTex: false
 			});*/
-		let tex3dShadowed = shade2([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
+		let tex3dShadowed = GpuCompute.run([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
 			vec3 col = fetch3(tex1);
 			float shadow = fetch1(tex2);
 			vec3 background = fetch3(tex3);

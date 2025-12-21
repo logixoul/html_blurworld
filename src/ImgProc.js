@@ -1,6 +1,6 @@
 import { shade2, textureCache, lx } from "./shade";
 import * as util from "./util";
-import * as THREE from '../node_modules/three/src/Three.js';
+import * as THREE from 'three';
 import * as System from "./System";
 
 export function fastBlur(tex, releaseFirstInputTex) {

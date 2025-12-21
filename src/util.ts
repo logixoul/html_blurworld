@@ -26,9 +26,9 @@ export function drawToScreen(inputTex : any, releaseFirstInputTex : boolean) {
 
 export function appendImageToHtml(tex : lx.Texture) {
 	var oldMagFilter = tex.get().magFilter;
-	tex.get().magFilter = THREE.NearestFilter;
+	tex.magFilter = THREE.NearestFilter;
 	drawToScreen(tex, false);
-	tex.get().magFilter = oldMagFilter;
+	tex.magFilter = oldMagFilter;
 
 	var dataURL = renderer.domElement.toDataURL();
 	var img = new Image();

@@ -10,6 +10,9 @@ export namespace lx {
 	export class Texture {
 		private actualTextureObj: THREE.Texture;
 		private renderTargetObj?: THREE.WebGLRenderTarget;
+		set magFilter(value: THREE.MagnificationTextureFilter) {
+			this.actualTextureObj.magFilter = value;
+		}
 		get(): THREE.Texture {
 			return this.actualTextureObj;
 		}

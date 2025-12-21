@@ -117,7 +117,7 @@ export function extrude(inTex, iters, scaleArg, releaseFirstInputTex) {
 	{
 		state = extrude_oneIteration(state, inTex, /*releaseFirstInputTex=*/ true);
 	}
-	state.get().magFilter = THREE.LinearFilter;
+	state.magFilter = THREE.LinearFilter;
 	//state = scale(state, 1.0/scaleArg, true);
 	
 	// blur to fix upscale-artefacts

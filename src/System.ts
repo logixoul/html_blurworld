@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 
-var mousePos : THREE.Vector2;
+var mousePos : THREE.Vector2 = new THREE.Vector2(0, 0);
 
 export function getMousePos() : THREE.Vector2 {
-	return mousePos ?? new THREE.Vector2(0, 0);
+	return mousePos;
 }
 
 document.addEventListener("mousemove", e => {
-	mousePos = new THREE.Vector2(e.x, e.y);
+	mousePos = new THREE.Vector2(e.clientX, e.clientY);
+	console.log("mouse moved: ", mousePos);
 });

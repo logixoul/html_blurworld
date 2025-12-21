@@ -275,10 +275,12 @@ interface ShadeOpts {
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	lib?: string,
+	dispose?: Array<TextureUnion>,
 }
 
 export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
 	const wrappedTexs = texs.map(t => new lx.Texture(t));
+
 
 	var processedOptions = {
 		releaseFirstInputTex: options.releaseFirstInputTex,
@@ -289,10 +291,15 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		uniforms: options.uniforms || { },
 		vshaderExtra: options.vshaderExtra || "",
 		lib: options.lib || "",
+		dispose: options.dispose || []
 	};
-	if(processedOptions.itype !== THREE.FloatType)
-		console.log("processedOptions.itype=" + processedOptions.itype);
-
+	const wrappedTexsToDispose : Array<lx.Texture> = [];
+	if(options.dispose !== undefined) {
+		for(const t of options.dispose) {
+			wrappedTexsToDispose.push(new lx.Texture(t));
+		}
+	}
+	
 	var renderTarget;
 	if(options.toScreen) {
 		renderTarget = null;
@@ -308,13 +315,16 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	}
 
 
-
+	let mousePos = System.getMousePos();
+	//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
 	var params : THREE.ShaderMaterialParameters = {
 		uniforms: {
 			time: { value: 0.0 },
-			mouse: { value: System.getMousePos() },
+			mouse: { value: mousePos },
 		}
 	};
+	
+	//console.log("params.uniforms before adding texs and user uniforms: ", params.uniforms?.mouse.value);
 
 	var uniformsString = "";
 
@@ -377,6 +387,9 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 
 	if(processedOptions.releaseFirstInputTex) {
 		textureCache.onNoLongerUsingTex(wrappedTexs[0]);
+	}
+	for(const t of wrappedTexsToDispose) {
+		textureCache.onNoLongerUsingTex(t);
 	}
 	if(renderTarget === null)
 		return null;

@@ -287,9 +287,17 @@ interface ShadeOpts {
 	dispose?: Array<TextureUnion>,
 }
 
-export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
-	const wrappedTexs = texs.map(t => new lx.Texture(t));
+export function shade2ToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
+	shade2_base(texs, fshader, { ...options, toScreen: true });
+}
 
+export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture {
+	return shade2_base(texs, fshader, options)!;
+}
+
+
+export function shade2_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
+	const wrappedTexs = texs.map(t => new lx.Texture(t));
 
 	var processedOptions = {
 		releaseFirstInputTex: options.releaseFirstInputTex,

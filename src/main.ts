@@ -28,7 +28,7 @@ export class App {
 				`, {
 					releaseFirstInputTex: false, // todo: fix memory leak
 					itype: THREE.FloatType
-				})!;
+				});
 				this.assetsLoaded = true;
 			}
 		));
@@ -76,7 +76,7 @@ export class App {
 				//THREE.UnsignedByteType,
 				//THREE.HalfFloatType,
 				THREE.FloatType,
-			releaseFirstInputTex: true })!;
+			releaseFirstInputTex: true });
 		return stateTex;
 	}
 
@@ -87,9 +87,9 @@ export class App {
 	};
 
 	private doSimulationStep(inTex : lx.Texture, releaseFirstInputTex : boolean) {
-		let state : lx.Texture = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex)!;
-		//state = ImgProc.fastBlur(state, /*releaseFirstInputTex=*/ true)!;
-		state = ImgProc.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true)!;
+		let state : lx.Texture = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
+		//state = ImgProc.fastBlur(state, /*releaseFirstInputTex=*/ true);
+		state = ImgProc.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
 		state = shade2([state?.get()], `
 			float f = fetch1();
 			//float fw = fwidth(f)*4.0;
@@ -104,13 +104,13 @@ export class App {
 					return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 				}
 				`
-			})!;
+			});
 		return state;
 	}
 
 	private make3d(heightmap: lx.Texture, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
-		let tex3d = shade2([heightmap?.get()!], ` // todo: rm the ! and ? when I've migrated ImgProc to TS.
+		let tex3d = shade2([heightmap], `
 			float here = fetch1();
 			vec2 d = vec2(
 				here - fetch1(tex1, tc - vec2(tsize1.x, 0)),
@@ -165,7 +165,7 @@ export class App {
 				`,
 				{
 					releaseFirstInputTex: false
-				})!;
+				});
 			globals.stateTex0.willNoLongerUse();
 			globals.stateTex0 = stateTex0Shrunken;
 		}
@@ -176,7 +176,7 @@ export class App {
 		var extruded0 = ImgProc.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		var extruded1 = ImgProc.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
 		if(KeysHeld.global_keysHeld["digit1"]) {
-			var toDraw = shade2([globals.stateTex0?.get()!], `
+			var toDraw = shade2([globals.stateTex0], `
 			float state = fetch1(tex1);
 			//state = .5 * state;
 			_out.r = state;`
@@ -188,9 +188,9 @@ export class App {
 			return;
 		}
 
-		let tex3d_0 = this.make3d(extruded0!, new THREE.Vector3(1.5, 0.2, 0.0), { releaseFirstInputTex: true });
-		let tex3d_1 = this.make3d(extruded1!, new THREE.Vector3(0.0, 0.2, 1.5), { releaseFirstInputTex: true });
-		let tex3d = shade2([tex3d_0?.get()!, tex3d_1?.get()!, this.backgroundPicTex?.get()!], `
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(1.5, 0.2, 0.0), { releaseFirstInputTex: true });
+		let tex3d_1 = this.make3d(extruded1, new THREE.Vector3(0.0, 0.2, 1.5), { releaseFirstInputTex: true });
+		let tex3d = shade2([tex3d_0, tex3d_1, this.backgroundPicTex], `
 			vec3 col0 = fetch3(tex1);
 			vec3 col1 = fetch3(tex2);
 			if(col0.r < 0.0 && col1.r < 0.0) {
@@ -203,12 +203,12 @@ export class App {
 			`, {
 				releaseFirstInputTex: false
 			});
-		/*let tex3dThresholded = shade2([tex3d?.get()!], `
+		/*let tex3dThresholded = shade2([tex3d], `
 			vec3 col = fetch3();
 			//col *= step(1.0, dot(col, vec3(1.0/3.0)));
 			_out.rgb = col;
 			`);*/
-		let tex3dToBlur = shade2([globals.stateTex0?.get()!, globals.stateTex1?.get()!], `
+		let tex3dToBlur = shade2([globals.stateTex0, globals.stateTex1], `
 			vec3 col0 = fetch3(tex1);
 			vec3 col1 = fetch3(tex2);
 			if(col0 == vec3(0.0) && col1 == vec3(0.0)) {
@@ -223,7 +223,7 @@ export class App {
 		tex3d_1?.willNoLongerUse();
 		let tex3dBlur = util.cloneTex(tex3dToBlur);
 		let tex3dBlurCollected = util.cloneTex(tex3dToBlur);
-		tex3dBlurCollected = shade2([tex3dBlurCollected?.get()!], `
+		tex3dBlurCollected = shade2([tex3dBlurCollected], `
 			_out.rgb = vec3(0.0); // zero it out
 			`, {
 				releaseFirstInputTex: true
@@ -231,20 +231,20 @@ export class App {
 		for(let i = 0; i < 3; i++) {
 			tex3dBlur = ImgProc.scale(tex3dBlur, 0.5, true);
 			tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, 1.0, true);
-			tex3dBlurCollected = shade2([tex3dBlurCollected?.get()!, tex3dBlur?.get()!], `
+			tex3dBlurCollected = shade2([tex3dBlurCollected, tex3dBlur], `
 				_out.rgb = fetch3(tex1) + fetch3(tex2);
 				`, {
 					releaseFirstInputTex: true
 				});
 		}
-		/*let tex3dBloom = shade2([tex3d?.get()!, tex3dBlurCollected?.get()!], `
+		/*let tex3dBloom = shade2([tex3d, tex3dBlurCollected], `
 			_out.rgb = fetch3(tex1) * 1.0 + fetch3(tex2) * 1.0;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {
 				releaseFirstInputTex: false
 			});*/
-		let tex3dShadowed = shade2([tex3d?.get()!, tex3dBlurCollected?.get()!, this.backgroundPicTex?.get()!], `
+		let tex3dShadowed = shade2([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
 			vec3 col = fetch3(tex1);
 			float shadow = fetch1(tex2);
 			vec3 background = fetch3(tex3);

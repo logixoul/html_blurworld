@@ -160,7 +160,7 @@ function animate(now: DOMHighResTimeStamp) {
 	globals.stateTex0 = stateTex0Shrunken;
 	//globals.stateTex1 = stateTex1Shrunken;
 
-	const iters = 15;// * System.getMousePos().x / window.innerWidth;
+	const iters = 30;// * System.getMousePos().x / window.innerWidth;
 
 	var extruded0 = ImgProc.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 	var extruded1 = ImgProc.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);

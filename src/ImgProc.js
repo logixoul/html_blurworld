@@ -20,7 +20,7 @@ export function fastBlur(tex, releaseFirstInputTex) {
 	);
 }
 
-export function blur(tex, width, releaseFirstInputTex) {
+export function blur(tex, width, scaleArg, releaseFirstInputTex) {
 	if(width === undefined) width = .45;
 	var tex2 = shade2([tex], `
 		float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
@@ -38,7 +38,8 @@ export function blur(tex, width, releaseFirstInputTex) {
 		`
 		, {
 			uniforms: { width: width },
-			releaseFirstInputTex: releaseFirstInputTex
+			releaseFirstInputTex: releaseFirstInputTex,
+			scale: new THREE.Vector2(1.0, scaleArg)
 		}
 	);
 	tex2 = shade2([tex2], `
@@ -57,14 +58,15 @@ export function blur(tex, width, releaseFirstInputTex) {
 	`
 	, {
 		uniforms: { width: width },
-		releaseFirstInputTex: true
+		releaseFirstInputTex: true,
+		scale: new THREE.Vector2(scaleArg, 1.0)
 	}
 	);
 	return tex2;
 }
 
 export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
-	state = blur(state, 1.0, releaseFirstInputTex);
+	state = blur(state, 1.0, 1.0, releaseFirstInputTex);
 	state = shade2([state, inTex], `
 		float state = fetch1(tex1);
 		float binary = fetch1(tex2);
@@ -90,9 +92,7 @@ export function scale(inTex, scale, releaseFirstInputTex) {
 	return state;
 }
 
-export function extrude(inTex, scaleArg, releaseFirstInputTex) {
-	const iters = window.iters || 30;
-
+export function extrude(inTex, iters, scaleArg, releaseFirstInputTex) {
 	var state = util.cloneTex(inTex);
 
 
@@ -100,11 +100,14 @@ export function extrude(inTex, scaleArg, releaseFirstInputTex) {
 	{
 		state = extrude_oneIteration(state, inTex, /*releaseFirstInputTex=*/ true);
 	}
-	state = scale(state, 1.0/scaleArg, true);
+	state.get().magFilter = THREE.LinearFilter;
+	//state = scale(state, 1.0/scaleArg, true);
+	
 	// blur to fix upscale-artefacts
 	const blurSize = window.blurSize || 1.0;
 	// extra blurs to make sure edges are smooth
-	state = blur(state, blurSize, true);
+	state = blur(state, blurSize, 1.0/scaleArg, true);
+	//state = fastBlur(state, true);
 	
 	// make edges sharp again
 	state = shade2([state, inTex], `

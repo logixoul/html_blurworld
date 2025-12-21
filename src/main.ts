@@ -8,6 +8,7 @@ import { Image } from "./Image.js";
 import { FramerateCounter } from "./FramerateCounter";
 import * as KeysHeld from './KeysHeld';
 import * as PresentationForIashu from './presentationForIashu';
+import * as System from './System';
 
 let backgroundPicTex : lx.Texture;
 let assetsLoaded : boolean = false;
@@ -76,7 +77,7 @@ const framerateCounter = new FramerateCounter();
 
 function doSimulationStep(inTex : lx.Texture, releaseFirstInputTex : boolean) {
 	let state : lx.Texture = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex)!;
-	state = ImgProc.blur(state, 0.45, /*releaseFirstInputTex=*/ true)!;
+	state = ImgProc.blur(state, 0.45, 1.0, /*releaseFirstInputTex=*/ true)!;
 	state = shade2([state?.get()], `
 		float f = fetch1();
 		float fw = fwidth(f);
@@ -110,7 +111,7 @@ function make3d(heightmap: lx.Texture, albedo: THREE.Vector3, options?: any) {
 		vec3 specularRgb = vec3(specular.y);
 		
 		if(here > 0.0)
-			_out.rgb = albedo.rgb;
+			_out.rgb = albedo.rgb*4.0;
 		else
 			_out.rgb = vec3(-1.0); // sentinel value for "no data"
 		
@@ -151,13 +152,15 @@ function animate(now: DOMHighResTimeStamp) {
 	/*const stateTexIntersection = shade2([globals.stateTex1, globals.stateTex0], `
 		_out.r = fetch1(tex1) * fetch1(tex2);
 		`)!;*/
-	globals.stateTex0.dispose();
-	//globals.stateTex1.dispose();
+	globals.stateTex0.willNoLongerUse();
+	//globals.stateTex1.willNoLongerUse();
 	globals.stateTex0 = stateTex0Shrunken;
 	//globals.stateTex1 = stateTex1Shrunken;
 
-	var extruded0 = ImgProc.extrude(globals.stateTex0, globals.scale, /*releaseFirstInputTex=*/ false);
-	var extruded1 = ImgProc.extrude(globals.stateTex1, globals.scale, /*releaseFirstInputTex=*/ false);
+	const iters = 15;// * System.getMousePos().x / window.innerWidth;
+
+	var extruded0 = ImgProc.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
+	var extruded1 = ImgProc.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
 	//var extruded2 = ImgProc.extrude(stateTexIntersection, globals.scale, /*releaseFirstInputTex=*/ false);
 	/*if(KeysHeld.global_keysHeld["digit1"]) {
 		var toDraw = shade2([tex2!], `
@@ -186,8 +189,8 @@ function animate(now: DOMHighResTimeStamp) {
 		col1 = max(col1, vec3(0.0));
 		_out.rgb = col0 + col1;
 		`);
-	extruded0?.dispose();
-	extruded1?.dispose();
+	//extruded0?.willNoLongerUse();
+	//extruded1?.willNoLongerUse();
 	/*let tex3dThresholded = shade2([tex3d?.get()!], `
 		vec3 col = fetch3();
 		//col *= step(1.0, dot(col, vec3(1.0/3.0)));
@@ -202,8 +205,8 @@ function animate(now: DOMHighResTimeStamp) {
 			_out.rgb = vec3(1.0);
 		}
 		`);
-	tex3d_0?.dispose();
-	tex3d_1?.dispose();
+	tex3d_0?.willNoLongerUse();
+	tex3d_1?.willNoLongerUse();
 	let tex3dBlur = util.cloneTex(tex3dToBlur);
 	let tex3dBlurCollected = util.cloneTex(tex3dToBlur);
 	tex3dBlurCollected = shade2([tex3dBlurCollected?.get()!], `
@@ -211,7 +214,7 @@ function animate(now: DOMHighResTimeStamp) {
 		`);
 	for(let i = 0; i < 3; i++) {
 		tex3dBlur = ImgProc.scale(tex3dBlur, 0.5, true);
-		tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, true);
+		tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, 1.0, true);
 		tex3dBlurCollected = shade2([tex3dBlurCollected?.get()!, tex3dBlur?.get()!], `
 			_out.rgb = fetch3(tex1) + fetch3(tex2);
 			`, {
@@ -231,7 +234,7 @@ function animate(now: DOMHighResTimeStamp) {
 		vec3 background = fetch3(tex3);
 		if(col.r < 0.0) {
 			col = background; // use background where no data
-			col /= 1.0 + pow(shadow, 4.0);
+			//col /= 1.0 + pow(shadow, 4.0);
 		} else {
 			//col += background * 0.02;
 		}
@@ -246,10 +249,11 @@ function animate(now: DOMHighResTimeStamp) {
 	}
 	//util.drawToScreen(tex3dBlurCollected, false);
 	else
-	util.drawToScreen(tex3dShadowed, true);
-	tex3d?.dispose();
-	tex3dBlur?.dispose();
-	tex3dToBlur?.dispose();
-	tex3dBlurCollected?.dispose();
+	util.drawToScreen(tex3dShadowed, false);
+	tex3d?.willNoLongerUse();
+	tex3dBlur?.willNoLongerUse();
+	tex3dToBlur?.willNoLongerUse();
+	tex3dBlurCollected?.willNoLongerUse();
+	tex3dShadowed?.willNoLongerUse();
 }
 requestAnimationFrame(animate);

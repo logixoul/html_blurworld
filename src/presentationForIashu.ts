@@ -25,7 +25,7 @@ function mul(inTex : lx.Texture, amount : number, releaseFirstInputTex: boolean)
 }
 
 function local_extrude_oneIteration(state : lx.Texture, inTex : lx.Texture, releaseFirstInputTex : boolean) {
-	state = ImgProc.blur(state, 1.0, releaseFirstInputTex)!;
+	state = ImgProc.blur(state, 1.0, 1.0, releaseFirstInputTex)!;
 	state = shade2([state, inTex], `
 		float state = fetch1(tex1);
 		float binary = fetch1(tex2);

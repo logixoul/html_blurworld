@@ -37,6 +37,9 @@ export namespace lx {
 		toString() {
 			return this.actualTextureObj.id.toString();
 		}
+		willNoLongerUse() {
+			textureCache.onNoLongerUsingTex(this);
+		}
 		dispose() {
 			if(this.renderTargetObj !== undefined) {
 				this.renderTargetObj.dispose();
@@ -145,6 +148,8 @@ class TextureCacheKey {
 	itype : THREE.TextureDataType = 0;
 	iformat: THREE.PixelFormat = THREE.RedFormat;
 	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.PixelFormat = THREE.RedFormat) {
+		console.assert(Number.isInteger(w));
+		console.assert(Number.isInteger(h));
 		this.width = w;
 		this.height = h;
 		this.itype = itype;
@@ -153,6 +158,9 @@ class TextureCacheKey {
 	toString() : string {
 		return this.width + "," + this.height + "," + this.itype + "," + this.iformat;
 		//return JSON.stringify(this);
+	}
+	toPrettyString() : string {
+		return "TextureCacheKey(width=" + this.width + ", height=" + this.height + ", itype=" + this.itype + ", iformat=" + this.iformat + ")";
 	}
 }
 
@@ -166,6 +174,7 @@ class TextureInfo {
 }
 
 function console_log(s : string) {
+	//console.log(s);
 }
 
 class TextureCache {
@@ -181,13 +190,14 @@ class TextureCache {
 	numTexturesDbg = 0;
 
 	_allocTex(key : TextureCacheKey) : lx.Texture {
-		
+		console.log("Allocating texture: " + key.toPrettyString());
 		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype, format: key.iformat });
 		var texWrapper = new lx.Texture(tex);
 
 		var keyString : string = texWrapper.toString();
-		this.infos.set(keyString, new TextureInfo(key));
-		this.infos.checkedGet(keyString).useCount = 1;
+		let textureInfo = new TextureInfo(key);
+		this.infos.set(keyString, textureInfo);
+		textureInfo.useCount = 1;
 
 		this.numTexturesDbg++;
 		return texWrapper;
@@ -203,6 +213,7 @@ class TextureCache {
 			tex.dispose();
 			return;
 		}
+		console.assert(info.useCount > 0);
 		info.useCount--;
 	}
 
@@ -213,7 +224,7 @@ class TextureCache {
 		this._setDefaults(tex);
 		return tex;*/
 		var keyString : string = key.toString();
-		console_log("get(" + keyString + "):");
+		console_log("get(" + key.toPrettyString() + "):");
 
 		console_log("\tnumTexturesDbg = " + this.numTexturesDbg);
 
@@ -234,10 +245,12 @@ class TextureCache {
 				let tex : lx.Texture = vec[i];
 				var texInfo = this.infos.checkedGet(tex.toString());
 				if(texInfo.useCount == 0) {
-					console_log("\treusing");
+					//console_log("\treusing");
 					this._setDefaults(tex.get());
 					texInfo.useCount++;
 					return tex;
+				} else if(texInfo.useCount < 0) {
+					throw "error";
 				}
 			}
 
@@ -287,6 +300,8 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	} else {
 		var size = new THREE.Vector2(wrappedTexs[0].get().image.width, wrappedTexs[0].get().image.height);
 		size = size.multiply(processedOptions.scale);
+		size.x = Math.floor(size.x);
+		size.y = Math.floor(size.y);
 		
 		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
 		renderTarget = textureCache.get(key);

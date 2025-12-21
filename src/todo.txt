@@ -2,5 +2,3 @@ Hi prio:
 
 Lo prio:
 	https://threejs.org/docs/index.html#api/en/materials/RawShaderMaterial
-	
-	REDUCE THE NUMBER of ! operators in my TS code

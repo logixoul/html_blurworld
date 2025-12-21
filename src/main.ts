@@ -88,14 +88,22 @@ export class App {
 
 	private doSimulationStep(inTex : lx.Texture, releaseFirstInputTex : boolean) {
 		let state : lx.Texture = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex)!;
-		state = ImgProc.blur(state, 0.45, 1.0, /*releaseFirstInputTex=*/ true)!;
+		//state = ImgProc.fastBlur(state, /*releaseFirstInputTex=*/ true)!;
+		state = ImgProc.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true)!;
 		state = shade2([state?.get()], `
 			float f = fetch1();
-			float fw = fwidth(f);
-			f = smoothstep(.5-fw, .5+fw, f);
+			//float fw = fwidth(f)*4.0;
+			//f = smoothstep(.5-fw, .5+fw, f);
+			f = linearstep(0.1, 0.9, f);
+
 			_out.r = f;
 			`, {
-				releaseFirstInputTex: true
+				releaseFirstInputTex: true,
+				lib: `
+				float linearstep(float edge0, float edge1, float x) {
+					return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+				}
+				`
 			})!;
 		return state;
 	}

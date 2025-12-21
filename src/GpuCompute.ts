@@ -82,6 +82,12 @@ function getTextureSize(tex: THREE.Texture): THREE.Vector2 {
 	return new THREE.Vector2(image.width, image.height);
 }
 
+function unpackTex(t : any) {
+	if(t.isWebGLRenderTarget)
+		return t.texture;
+	else return t;
+}
+
 const vertexShader : string = `
 varying vec2 vUv;
 vec2 tc;
@@ -100,40 +106,40 @@ const intro = `
 	vec4 _out;
 	vec2 tc;
 	vec4 fetch4(sampler2D tex_, vec2 tc_) {
-		return texture2D(tex_, tc_).rgba;
+		return texture(tex_, tc_).rgba;
 	}
 	vec3 fetch3(sampler2D tex_, vec2 tc_) {
-		return texture2D(tex_, tc_).rgb;
+		return texture(tex_, tc_).rgb;
 	}
 	vec2 fetch2(sampler2D tex_, vec2 tc_) {
-		return texture2D(tex_, tc_).rg;
+		return texture(tex_, tc_).rg;
 	}
 	float fetch1(sampler2D tex_, vec2 tc_) {
-		return texture2D(tex_, tc_).r;
+		return texture(tex_, tc_).r;
 	}
 	vec4 fetch4(sampler2D tex_) {
-		return texture2D(tex_, tc).rgba;
+		return texture(tex_, tc).rgba;
 	}
 	vec3 fetch3(sampler2D tex_) {
-		return texture2D(tex_, tc).rgb;
+		return texture(tex_, tc).rgb;
 	}
 	vec2 fetch2(sampler2D tex_) {
-		return texture2D(tex_, tc).rg;
+		return texture(tex_, tc).rg;
 	}
 	float fetch1(sampler2D tex_) {
-		return texture2D(tex_, tc).r;
+		return texture(tex_, tc).r;
 	}
 	vec4 fetch4() {
-		return texture2D(tex1, tc).rgba;
+		return texture(tex1, tc).rgba;
 	}
 	vec3 fetch3() {
-		return texture2D(tex1, tc).rgb;
+		return texture(tex1, tc).rgb;
 	}
 	vec2 fetch2() {
-		return texture2D(tex1, tc).rg;
+		return texture(tex1, tc).rg;
 	}
 	float fetch1() {
-		return texture2D(tex1, tc).r;
+		return texture(tex1, tc).r;
 	}
 
 `;
@@ -347,8 +353,6 @@ export function compute_base(texs : Array<TextureUnion>, fshader : string, optio
 	texs.forEach(tex => {
 		const name = "tex" + (i+1);
 		const tsizeName = "tsize" + (i+1);
-		//uniformsString += "uniform sampler2D " + name + ";";
-		//uniformsString += "uniform vec2 " + tsizeName + ";";
 		var texture : TextureWrapper = wrappedTexs[i];
 		params.uniforms![name] = { value: texture.get() };
 		const texSize = getTextureSize(texture.get());

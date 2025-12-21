@@ -10,8 +10,8 @@ type RenderTargetTexture = {
 
 var scene = new THREE.Scene();
 
-var circleGeometry = new THREE.CircleBufferGeometry(2, 32);
-//var circleGeometry = new THREE.LineBufferGeometry(5, 32);
+var circleGeometry = new THREE.CircleGeometry(2, 32);
+//var circleGeometry = new THREE.LineGeometry(5, 32);
 var paintMaterial = new THREE.MeshBasicMaterial({
 	side: THREE.DoubleSide,
 });

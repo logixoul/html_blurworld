@@ -131,7 +131,7 @@ const outro = `
 
 var camera = new THREE.OrthographicCamera( 0, 1, 1, 0, -1000, 1000 );
 
-var geometry = new THREE.PlaneBufferGeometry();
+var geometry = new THREE.PlaneGeometry();
 
 
 
@@ -145,7 +145,7 @@ var scene = new THREE.Scene();
 class TextureCacheKey {
 	width : number = 0;
 	height : number = 0;
-	itype : THREE.TextureDataType = 0;
+	itype : THREE.TextureDataType;
 	iformat: THREE.PixelFormat = THREE.RedFormat;
 	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.PixelFormat = THREE.RedFormat) {
 		console.assert(Number.isInteger(w));

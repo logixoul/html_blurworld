@@ -3,7 +3,6 @@ import * as util from "./util";
 import * as THREE from '../node_modules/three/src/Three.js';
 import * as System from "./System";
 
-// from adaptive-contrast-stretching-cpp-2
 export function fastBlur(tex, releaseFirstInputTex) {
 	return shade2([tex], `
 		float sum = float(0.0);

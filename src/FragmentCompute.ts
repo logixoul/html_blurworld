@@ -4,51 +4,49 @@ import * as util from './util';
 import { SafeMap } from './SafeMap';
 import * as System from './System';
 
-export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | lx.Texture);
+export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | TextureWrapper);
 
-export namespace lx {
-	export class Texture {
-		private actualTextureObj: THREE.Texture;
-		private renderTargetObj?: THREE.WebGLRenderTarget;
-		set magFilter(value: THREE.MagnificationTextureFilter) {
-			this.actualTextureObj.magFilter = value;
+export class TextureWrapper {
+	private actualTextureObj: THREE.Texture;
+	private renderTargetObj?: THREE.WebGLRenderTarget;
+	set magFilter(value: THREE.MagnificationTextureFilter) {
+		this.actualTextureObj.magFilter = value;
+	}
+	get(): THREE.Texture {
+		return this.actualTextureObj;
+	}
+	getRenderTarget(): THREE.WebGLRenderTarget {
+		if(this.renderTargetObj === undefined)
+			throw "error";
+		return this.renderTargetObj;
+	}
+	constructor(param : TextureUnion) {
+		var asTex = param as THREE.Texture;
+		var asRt = param as THREE.WebGLRenderTarget;
+		if(param instanceof THREE.Texture) {
+			this.actualTextureObj = asTex;
+		} else if(param instanceof THREE.WebGLRenderTarget) {
+			this.actualTextureObj = asRt.texture;
+			this.renderTargetObj = asRt;
+		} else if(param instanceof TextureWrapper) {
+			var asLxTex = param as TextureWrapper;
+			this.actualTextureObj = asLxTex.actualTextureObj;
+			this.renderTargetObj = asLxTex.renderTargetObj;
+		} else {
+			throw "error";
 		}
-		get(): THREE.Texture {
-			return this.actualTextureObj;
-		}
-		getRenderTarget(): THREE.WebGLRenderTarget {
-			if(this.renderTargetObj === undefined)
-				throw "error";
-			return this.renderTargetObj;
-		}
-		constructor(param : TextureUnion) {
-			var asTex = param as THREE.Texture;
-			var asRt = param as THREE.WebGLRenderTarget;
-			if(param instanceof THREE.Texture) {
-				this.actualTextureObj = asTex;
-			} else if(param instanceof THREE.WebGLRenderTarget) {
-				this.actualTextureObj = asRt.texture;
-				this.renderTargetObj = asRt;
-			} else if(param instanceof lx.Texture) {
-				var asLxTex = param as lx.Texture;
-				this.actualTextureObj = asLxTex.actualTextureObj;
-				this.renderTargetObj = asLxTex.renderTargetObj;
-			} else {
-				throw "error";
-			}
-		}
-		toString() {
-			return this.actualTextureObj.id.toString();
-		}
-		willNoLongerUse() {
-			texturePool.onNoLongerUsingTex(this);
-		}
-		dispose() {
-			if(this.renderTargetObj !== undefined) {
-				this.renderTargetObj.dispose();
-			} else {
-				this.actualTextureObj.dispose();
-			}
+	}
+	toString() {
+		return this.actualTextureObj.id.toString();
+	}
+	willNoLongerUse() {
+		texturePool.onNoLongerUsingTex(this);
+	}
+	dispose() {
+		if(this.renderTargetObj !== undefined) {
+			this.renderTargetObj.dispose();
+		} else {
+			this.actualTextureObj.dispose();
 		}
 	}
 }
@@ -187,8 +185,8 @@ function console_log(s : string) {
 }
 
 class TexturePool {
-	mapOfTextures = new SafeMap<string, Array<lx.Texture>>(); // key obtained by TexturePoolKey.toString()
-	infos = new SafeMap<string, TextureInfo>(); // key obtained by lx.Texture.toString()
+	mapOfTextures = new SafeMap<string, Array<TextureWrapper>>(); // key obtained by TexturePoolKey.toString()
+	infos = new SafeMap<string, TextureInfo>(); // key obtained by TextureWrapper.toString()
 
 	_setDefaults(tex : THREE.Texture) {
 		tex.minFilter = THREE.LinearFilter;
@@ -200,9 +198,9 @@ class TexturePool {
 
 	numTexturesDbg = 0;
 
-	_allocTex(key : TexturePoolKey) : lx.Texture {
+	_allocTex(key : TexturePoolKey) : TextureWrapper {
 		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype, format: key.iformat });
-		var texWrapper = new lx.Texture(tex);
+		var texWrapper = new TextureWrapper(tex);
 
 		var keyString : string = texWrapper.toString();
 		let textureInfo = new TextureInfo(key);
@@ -213,7 +211,7 @@ class TexturePool {
 		return texWrapper;
 	}
 
-	onNoLongerUsingTex(tex : lx.Texture) {
+	onNoLongerUsingTex(tex : TextureWrapper) {
 		var info : TextureInfo | undefined = this.infos.get(tex.toString());
 		if(info === undefined) {
 			console.assert(tex.get() instanceof THREE.DataTexture);
@@ -229,10 +227,6 @@ class TexturePool {
 
 	get(key : TexturePoolKey)
 	{
-		/*var tex = this._allocTex(key);
-		//vec.push(tex);
-		this._setDefaults(tex);
-		return tex;*/
 		var keyString : string = key.toString();
 		console_log("get(" + key.toPrettyString() + "):");
 
@@ -252,7 +246,7 @@ class TexturePool {
 			const vec = this.mapOfTextures.checkedGet(keyString);
 			
 			for(let i = 0; i < vec.length; i++) {
-				let tex : lx.Texture = vec[i];
+				let tex : TextureWrapper = vec[i];
 				var texInfo = this.infos.checkedGet(tex.toString());
 				if(texInfo.useCount == 0) {
 					//console_log("\treusing");
@@ -293,13 +287,13 @@ export function shade2ToScreen(texs : Array<TextureUnion>, fshader : string, opt
 	shade2_base(texs, fshader, { ...options, toScreen: true });
 }
 
-export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture {
+export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper {
 	return shade2_base(texs, fshader, options)!;
 }
 
 
-export function shade2_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
-	const wrappedTexs = texs.map(t => new lx.Texture(t));
+export function shade2_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
+	const wrappedTexs = texs.map(t => new TextureWrapper(t));
 
 	var processedOptions = {
 		releaseFirstInputTex: options.releaseFirstInputTex,
@@ -312,10 +306,10 @@ export function shade2_base(texs : Array<TextureUnion>, fshader : string, option
 		lib: options.lib || "",
 		dispose: options.dispose || []
 	};
-	const wrappedTexsToDispose : Array<lx.Texture> = [];
+	const wrappedTexsToDispose : Array<TextureWrapper> = [];
 	if(options.dispose !== undefined) {
 		for(const t of options.dispose) {
-			wrappedTexsToDispose.push(new lx.Texture(t));
+			wrappedTexsToDispose.push(new TextureWrapper(t));
 		}
 	}
 	
@@ -414,5 +408,5 @@ export function shade2_base(texs : Array<TextureUnion>, fshader : string, option
 	}
 	if(renderTarget === null)
 		return null;
-	return new lx.Texture(renderTarget);
+	return new TextureWrapper(renderTarget);
 }

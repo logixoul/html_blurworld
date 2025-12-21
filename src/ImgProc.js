@@ -1,4 +1,4 @@
-import { shade2, texturePool, lx } from "./shade";
+import { shade2, texturePool, lx } from "./FragmentCompute";
 import * as util from "./util";
 import * as THREE from 'three';
 import * as System from "./System";

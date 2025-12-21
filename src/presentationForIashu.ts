@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { globals } from './Globals.js';
-import { shade2, lx } from './shade';
-import * as ImgProc from './ImgProc.js';
+import { globals } from './Globals';
+import * as FragmentCompute from './FragmentCompute';
+const { shade2 } = FragmentCompute;
+import * as ImgProc from './ImgProc';
 import * as util from './util';
 
 export function init() {
@@ -13,7 +14,7 @@ export function init() {
     });
 }
 
-function mul(inTex : lx.Texture, amount : number, releaseFirstInputTex: boolean) {
+function mul(inTex : FragmentCompute.TextureWrapper, amount : number, releaseFirstInputTex: boolean) {
     return shade2([inTex],`
 		_out.rgb = fetch3() * mul;
 	`,
@@ -24,7 +25,7 @@ function mul(inTex : lx.Texture, amount : number, releaseFirstInputTex: boolean)
 	)!;
 }
 
-function local_extrude_oneIteration(state : lx.Texture, inTex : lx.Texture, releaseFirstInputTex : boolean) {
+function local_extrude_oneIteration(state : FragmentCompute.TextureWrapper, inTex : FragmentCompute.TextureWrapper, releaseFirstInputTex : boolean) {
 	state = ImgProc.blur(state, 1.0, 1.0, releaseFirstInputTex)!;
 	state = shade2([state, inTex], `
 		float state = fetch1(tex1);
@@ -39,13 +40,13 @@ function local_extrude_oneIteration(state : lx.Texture, inTex : lx.Texture, rele
 	return state;
 }
 
-function extrude_oneIterationForPresentation(state: lx.Texture, inTex : lx.Texture, releaseFirstInputTex: boolean) {
+function extrude_oneIterationForPresentation(state: FragmentCompute.TextureWrapper, inTex : FragmentCompute.TextureWrapper, releaseFirstInputTex: boolean) {
 	state = local_extrude_oneIteration(state, inTex, releaseFirstInputTex);
 	return mul(state, 1.0 / 1.2, true);
 }
 
-function extrudeForPresentation(inTex : lx.Texture) {
-	var state : lx.Texture = util.cloneTex(inTex)!;
+function extrudeForPresentation(inTex : FragmentCompute.TextureWrapper) {
+	var state : FragmentCompute.TextureWrapper = util.cloneTex(inTex)!;
 	state = shade2([state], `
 		_out.rgb = fetch3();
 	`, {

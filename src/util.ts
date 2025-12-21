@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { shade2, lx } from './shade'
+import * as FragmentCompute from './FragmentCompute'
+const { shade2 } = FragmentCompute;
 
 export var renderer = new THREE.WebGLRenderer({antialias: true });
 document.body.appendChild( renderer.domElement );
@@ -24,7 +25,7 @@ export function drawToScreen(inputTex : any, releaseFirstInputTex : boolean) {
 		});
 }
 
-export function appendImageToHtml(tex : lx.Texture) {
+export function appendImageToHtml(tex : FragmentCompute.TextureWrapper) {
 	var oldMagFilter = tex.get().magFilter;
 	tex.magFilter = THREE.NearestFilter;
 	drawToScreen(tex, false);

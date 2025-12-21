@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { shade2, lx, TextureUnion } from './shade';
+import * as FragmentCompute from './FragmentCompute';
+const { shade2 } = FragmentCompute;
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
 import { Input } from './Input';
@@ -11,14 +12,14 @@ import * as PresentationForIashu from './presentationForIashu';
 import * as System from './System';
 
 export class App {
-	private backgroundPicTex!: lx.Texture;
+	private backgroundPicTex!: FragmentCompute.TextureWrapper;
 	private assetsLoaded: boolean = false;
-	private backgroundPicTexOrig: lx.Texture;
+	private backgroundPicTexOrig: FragmentCompute.TextureWrapper;
 	private framerateCounter: FramerateCounter;
 	private limitFramerateCheckbox: HTMLInputElement;
 
 	constructor() {
-		this.backgroundPicTexOrig = new lx.Texture(new THREE.TextureLoader().load(
+		this.backgroundPicTexOrig = new FragmentCompute.TextureWrapper(new THREE.TextureLoader().load(
 			'assets/milkyway.png',
 			() => {
 				this.backgroundPicTex = shade2([this.backgroundPicTexOrig], `
@@ -63,7 +64,7 @@ export class App {
 
 		img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
-		let stateTex : TextureUnion = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
+		let stateTex : FragmentCompute.TextureUnion = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
 				THREE.FloatType);
 				//THREE.UnsignedByteType);
 		stateTex.generateMipmaps = false;
@@ -86,8 +87,8 @@ export class App {
 		util.renderer.setSize( window.innerWidth, window.innerHeight );
 	};
 
-	private doSimulationStep(inTex : lx.Texture, releaseFirstInputTex : boolean) {
-		let state : lx.Texture = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
+	private doSimulationStep(inTex : FragmentCompute.TextureWrapper, releaseFirstInputTex : boolean) {
+		let state : FragmentCompute.TextureWrapper = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
 		//state = ImgProc.fastBlur(state, /*releaseFirstInputTex=*/ true);
 		state = ImgProc.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
 		state = shade2([state?.get()], `
@@ -108,7 +109,7 @@ export class App {
 		return state;
 	}
 
-	private make3d(heightmap: lx.Texture, albedo: THREE.Vector3, options?: any) {
+	private make3d(heightmap: FragmentCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
 		let tex3d = shade2([heightmap], `
 			float here = fetch1();

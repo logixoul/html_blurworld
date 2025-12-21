@@ -151,7 +151,7 @@ var meshCache : MeshCache = { };
 
 var scene = new THREE.Scene();
 
-class TextureCacheKey {
+class TexturePoolKey {
 	width : number = 0;
 	height : number = 0;
 	itype : THREE.TextureDataType;
@@ -169,15 +169,15 @@ class TextureCacheKey {
 		//return JSON.stringify(this);
 	}
 	toPrettyString() : string {
-		return "TextureCacheKey(width=" + this.width + ", height=" + this.height + ", itype=" + this.itype + ", iformat=" + this.iformat + ")";
+		return "TexturePoolKey(width=" + this.width + ", height=" + this.height + ", itype=" + this.itype + ", iformat=" + this.iformat + ")";
 	}
 }
 
 class TextureInfo {
 	useCount: number = 0;
-	key: TextureCacheKey;
+	key: TexturePoolKey;
 
-	constructor(key : TextureCacheKey) {
+	constructor(key : TexturePoolKey) {
 		this.key = key;
 	}
 }
@@ -187,7 +187,7 @@ function console_log(s : string) {
 }
 
 class TexturePool {
-	mapOfTextures = new SafeMap<string, Array<lx.Texture>>(); // key obtained by TextureCacheKey.toString()
+	mapOfTextures = new SafeMap<string, Array<lx.Texture>>(); // key obtained by TexturePoolKey.toString()
 	infos = new SafeMap<string, TextureInfo>(); // key obtained by lx.Texture.toString()
 
 	_setDefaults(tex : THREE.Texture) {
@@ -200,7 +200,7 @@ class TexturePool {
 
 	numTexturesDbg = 0;
 
-	_allocTex(key : TextureCacheKey) : lx.Texture {
+	_allocTex(key : TexturePoolKey) : lx.Texture {
 		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype, format: key.iformat });
 		var texWrapper = new lx.Texture(tex);
 
@@ -227,7 +227,7 @@ class TexturePool {
 		info.useCount--;
 	}
 
-	get(key : TextureCacheKey)
+	get(key : TexturePoolKey)
 	{
 		/*var tex = this._allocTex(key);
 		//vec.push(tex);
@@ -329,7 +329,7 @@ export function shade2_base(texs : Array<TextureUnion>, fshader : string, option
 		size.x = Math.floor(size.x);
 		size.y = Math.floor(size.y);
 		
-		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
+		const key = new TexturePoolKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
 		renderTarget = texturePool.get(key);
 		//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}

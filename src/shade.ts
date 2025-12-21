@@ -63,6 +63,13 @@ function mapType(value: any) {
 	else throw "error";
 }
 
+// GPT generated this functions. todo: is it needed?
+function getTextureSize(tex: THREE.Texture): THREE.Vector2 {
+	// THREE.Texture.image is typed as unknown in @types/three.
+	const image = tex.image as { width: number; height: number };
+	return new THREE.Vector2(image.width, image.height);
+}
+
 const vertexShader : string = `
 varying vec2 vUv;
 vec2 tc;
@@ -123,7 +130,6 @@ const outro = `
 	}
 	void main() {
 		tc = vUv; // backward compatibility
-		_out.a = 1.0f;
 		shade();
 		gl_FragColor = _out;
 	}
@@ -146,8 +152,8 @@ class TextureCacheKey {
 	width : number = 0;
 	height : number = 0;
 	itype : THREE.TextureDataType;
-	iformat: THREE.AnyPixelFormat = THREE.RedFormat;
-	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.AnyPixelFormat = THREE.RedFormat) {
+	iformat: THREE.PixelFormat = THREE.RedFormat;
+	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.PixelFormat = THREE.RedFormat) {
 		console.assert(Number.isInteger(w));
 		console.assert(Number.isInteger(h));
 		this.width = w;
@@ -271,7 +277,7 @@ interface ShadeOpts {
 	toScreen?: boolean;
 	scale?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
-	iformat?: THREE.AnyPixelFormat;
+	iformat?: THREE.PixelFormat;
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	lib?: string,
@@ -287,7 +293,7 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 		itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
-		iformat: options.iformat !== undefined ? options.iformat : wrappedTexs[0].get().format,
+		iformat: options.iformat !== undefined ? options.iformat : wrappedTexs[0].get().format as THREE.PixelFormat,
 		uniforms: options.uniforms || { },
 		vshaderExtra: options.vshaderExtra || "",
 		lib: options.lib || "",
@@ -304,7 +310,8 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 	if(options.toScreen) {
 		renderTarget = null;
 	} else {
-		var size = new THREE.Vector2(wrappedTexs[0].get().image.width, wrappedTexs[0].get().image.height);
+		const baseSize = getTextureSize(wrappedTexs[0].get());
+		var size = new THREE.Vector2(baseSize.width, baseSize.height);
 		size = size.multiply(processedOptions.scale);
 		size.x = Math.floor(size.x);
 		size.y = Math.floor(size.y);
@@ -336,7 +343,8 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		//uniformsString += "uniform vec2 " + tsizeName + ";";
 		var texture : THREE.Texture = wrappedTexs[i].get();
 		params.uniforms![name] = { value: texture };
-		params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texture.image.width, 1.0 / texture.image.height) };
+		const texSize = getTextureSize(texture);
+		params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height) };
 		i++;
 	});
 

@@ -41,7 +41,7 @@ export namespace lx {
 			return this.actualTextureObj.id.toString();
 		}
 		willNoLongerUse() {
-			textureCache.onNoLongerUsingTex(this);
+			texturePool.onNoLongerUsingTex(this);
 		}
 		dispose() {
 			if(this.renderTargetObj !== undefined) {
@@ -186,14 +186,16 @@ function console_log(s : string) {
 	//console.log(s);
 }
 
-class TextureCache {
-	cache = new SafeMap<string, Array<lx.Texture>>(); // key obtained by TextureCacheKey.toString()
+class TexturePool {
+	mapOfTextures = new SafeMap<string, Array<lx.Texture>>(); // key obtained by TextureCacheKey.toString()
 	infos = new SafeMap<string, TextureInfo>(); // key obtained by lx.Texture.toString()
 
 	_setDefaults(tex : THREE.Texture) {
-		/*tex->setMinFilter(GL_LINEAR);
-		tex->setMagFilter(GL_LINEAR);
-		tex->setWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);*/
+		tex.minFilter = THREE.LinearFilter;
+		tex.magFilter = THREE.LinearFilter;
+		tex.wrapS = THREE.ClampToEdgeWrapping;
+		tex.wrapT = THREE.ClampToEdgeWrapping;
+		//tex.generateMipmaps = false;
 	}
 
 	numTexturesDbg = 0;
@@ -215,7 +217,7 @@ class TextureCache {
 		var info : TextureInfo | undefined = this.infos.get(tex.toString());
 		if(info === undefined) {
 			console.assert(tex.get() instanceof THREE.DataTexture);
-			// `tex` has not been created by TextureCache and is not managed by it.
+			// `tex` has not been created by TexturePool and is not managed by it.
 			// Since `onNoLongerUsingTex()` has been called, the user tells us that he no longer needs that texture so
 			// it's safe to just dispose it.
 			tex.dispose();
@@ -236,18 +238,18 @@ class TextureCache {
 
 		console_log("\tnumTexturesDbg = " + this.numTexturesDbg);
 
-		const alreadyExists = this.cache.has(keyString);
+		const alreadyExists = this.mapOfTextures.has(keyString);
 		console_log("\talreadyExists = " + alreadyExists);
 		if (!alreadyExists) {
 			console_log("\tcachemap doesn't have anything for this key. allocating texture");
 			const tex = this._allocTex(key);
 			const vec = [ tex ];
-			this.cache.set(keyString, vec);
+			this.mapOfTextures.set(keyString, vec);
 			this._setDefaults(tex.get());
 			return tex;
 		}
 		else {
-			const vec = this.cache.checkedGet(keyString);
+			const vec = this.mapOfTextures.checkedGet(keyString);
 			
 			for(let i = 0; i < vec.length; i++) {
 				let tex : lx.Texture = vec[i];
@@ -271,7 +273,7 @@ class TextureCache {
 	}
 }
 
-export var textureCache = new TextureCache();
+export var texturePool = new TexturePool();
 
 type UniformMap = { [uniform: string]: THREE.IUniform };
 
@@ -328,7 +330,7 @@ export function shade2_base(texs : Array<TextureUnion>, fshader : string, option
 		size.y = Math.floor(size.y);
 		
 		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
-		renderTarget = textureCache.get(key);
+		renderTarget = texturePool.get(key);
 		//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}
 
@@ -405,10 +407,10 @@ export function shade2_base(texs : Array<TextureUnion>, fshader : string, option
 	scene.remove( mesh );
 
 	if(processedOptions.releaseFirstInputTex) {
-		textureCache.onNoLongerUsingTex(wrappedTexs[0]);
+		texturePool.onNoLongerUsingTex(wrappedTexs[0]);
 	}
 	for(const t of wrappedTexsToDispose) {
-		textureCache.onNoLongerUsingTex(t);
+		texturePool.onNoLongerUsingTex(t);
 	}
 	if(renderTarget === null)
 		return null;

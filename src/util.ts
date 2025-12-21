@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { shade2, textureCache, lx } from './shade'
+import { shade2, lx } from './shade'
 
 export var renderer = new THREE.WebGLRenderer({antialias: true });
 document.body.appendChild( renderer.domElement );

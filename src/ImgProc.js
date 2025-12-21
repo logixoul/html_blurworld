@@ -1,4 +1,4 @@
-import { shade2, textureCache, lx } from "./shade";
+import { shade2, texturePool, lx } from "./shade";
 import * as util from "./util";
 import * as THREE from 'three';
 import * as System from "./System";
@@ -68,7 +68,7 @@ export function blur(tex, width, scaleArg, releaseFirstInputTex) {
 export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 	let stateLocal = util.cloneTex(state);
 	if(releaseFirstInputTex) {
-		textureCache.onNoLongerUsingTex(state);
+		texturePool.onNoLongerUsingTex(state);
 		//state.dispose();
 	}
 	let blurred = blur(stateLocal, 1.0, 1.0, false);

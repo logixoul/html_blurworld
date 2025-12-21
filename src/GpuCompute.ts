@@ -21,11 +21,11 @@ export class TextureWrapper {
 		return this.renderTargetObj;
 	}
 	constructor(param : TextureUnion) {
-		var asTex = param as THREE.Texture;
-		var asRt = param as THREE.WebGLRenderTarget;
 		if(param instanceof THREE.Texture) {
+			var asTex = param as THREE.Texture;
 			this.actualTextureObj = asTex;
 		} else if(param instanceof THREE.WebGLRenderTarget) {
+			var asRt = param as THREE.WebGLRenderTarget;
 			this.actualTextureObj = asRt.texture;
 			this.renderTargetObj = asRt;
 		} else if(param instanceof TextureWrapper) {

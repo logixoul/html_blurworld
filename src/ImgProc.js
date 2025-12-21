@@ -79,7 +79,18 @@ export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 	return state;
 }
 
-export function extrude(inTex, scale, releaseFirstInputTex) {
+export function scale(inTex, scale, releaseFirstInputTex) {
+	// upscale
+	var state = shade2([inTex], `
+		_out.r = fetch1(tex1);
+		`, {
+			scale: new THREE.Vector2(scale, scale),
+			releaseFirstInputTex: releaseFirstInputTex
+		});
+	return state;
+}
+
+export function extrude(inTex, scaleArg, releaseFirstInputTex) {
 	const iters = window.iters || 30;
 
 	var state = util.cloneTex(inTex);
@@ -89,15 +100,12 @@ export function extrude(inTex, scale, releaseFirstInputTex) {
 	{
 		state = extrude_oneIteration(state, inTex, /*releaseFirstInputTex=*/ true);
 	}
-	// upscale
-	state = shade2([state, inTex], `
-		_out.r = fetch1(tex1);
-		`, {
-			scale: new THREE.Vector2(1.0 / scale, 1.0 / scale),
-			releaseFirstInputTex: true
-		});
+	state = scale(state, 1.0/scaleArg, true);
 	// blur to fix upscale-artefacts
-	state = blur(state, 1.0, true);
+	const blurSize = window.blurSize || 1.0;
+	// extra blurs to make sure edges are smooth
+	state = blur(state, blurSize, true);
+	
 	// make edges sharp again
 	state = shade2([state, inTex], `
 		float f = fetch1(tex2);

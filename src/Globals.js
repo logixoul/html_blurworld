@@ -1,6 +1,7 @@
 export class Globals {
 	input;
-	stateTex;
+	stateTex0;
+	stateTex1;
 	textureRegistry;
 	scale; // number
 };

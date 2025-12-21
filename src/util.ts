@@ -17,7 +17,7 @@ export function unpackTex(t : any) {
 export function drawToScreen(inputTex : any, releaseFirstInputTex : boolean) {
 	shade2([inputTex], `
 		vec2 texSize = vec2(textureSize(tex1, 0));
-		_out.rgb = vec3(texelFetch(tex1, ivec2(tc * texSize), 0).r);
+		_out.rgb = texelFetch(tex1, ivec2(tc * texSize), 0).rgb;
 		`, {
 			toScreen: true,
 			releaseFirstInputTex: releaseFirstInputTex

@@ -9,7 +9,7 @@ export function init() {
         console.log("keydown!!!");
         const char : string = e.code.toLowerCase();
         if(char == 'space')
-            extrudeForPresentation(globals.stateTex);
+            extrudeForPresentation(globals.stateTex0);
     });
 }
 

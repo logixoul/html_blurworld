@@ -44,19 +44,32 @@ function unproject(x, y, tex) {
 	return new THREE.Vector2(x*globals.scale, tex.image.height - 1 - y*globals.scale);
 }
 
-function drawLine(p1Projected, p2Projected) {
-	const p1 = unproject(p1Projected.x, p1Projected.y, globals.stateTex.get());
-	const p2 = unproject(p2Projected.x, p2Projected.y, globals.stateTex.get());
+function drawLine(tex, p1Projected, p2Projected) {
+	const p1 = unproject(p1Projected.x, p1Projected.y, globals.stateTex0.get());
+	const p2 = unproject(p2Projected.x, p2Projected.y, globals.stateTex0.get());
 	for(var i = 0; i < 1; i+=0.1/p1.distanceTo(p2)) {
 		const p = p1.lerp(p2, i)
-		drawCircleToTex(globals.stateTex, p);
+		drawCircleToTex(tex, p);
 	}
 }
 
 document.addEventListener("mousemove", e => {
-	if((e.buttons & 1) != 0 || (e.buttons & 2) != 0) {
-		paintMaterial.color = e.buttons & 1 ? new THREE.Color(1,1,1) : new THREE.Color(0, 0, 0);
-		drawLine(new THREE.Vector2(e.x, e.y), new THREE.Vector2(e.x - e.movementX, e.y - e.movementY));
+	const leftBtnPressed = (e.buttons & 1) != 0;
+	const rightBtnPressed = (e.buttons & 2) != 0;
+	const middleBtnPressed = (e.buttons & 4) != 0;
+	if(leftBtnPressed || rightBtnPressed || middleBtnPressed) {
+		const shouldErase = rightBtnPressed;
+		const oldPos = new THREE.Vector2(e.x, e.y);
+		const newPos = new THREE.Vector2(e.x - e.movementX, e.y - e.movementY);
+		if(shouldErase) {
+			paintMaterial.color = new THREE.Color(0,0,0);
+			drawLine(globals.stateTex0, oldPos, newPos);
+			drawLine(globals.stateTex1, oldPos, newPos);
+		} else {
+			const destinationTexture = middleBtnPressed ? globals.stateTex1 : globals.stateTex0;
+			paintMaterial.color = new THREE.Color(1,1,1);
+			drawLine(destinationTexture, oldPos, newPos);
+		}
 	}
 });
 

@@ -4,7 +4,7 @@ import * as util from './util';
 import { SafeMap } from './SafeMap';
 import * as System from './System';
 
-type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | lx.Texture);
+export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | lx.Texture);
 
 export namespace lx {
 	export class Texture {
@@ -48,6 +48,8 @@ export namespace lx {
 }
 
 function mapType(value: any) {
+	if(value instanceof THREE.Vector3)
+		return 'vec3';
 	if(value instanceof THREE.Vector2)
 		return 'vec2';
 	else if(typeof value === "number")
@@ -141,13 +143,15 @@ class TextureCacheKey {
 	width : number = 0;
 	height : number = 0;
 	itype : THREE.TextureDataType = 0;
-	constructor(w : number, h : number, itype : THREE.TextureDataType) {
+	iformat: THREE.PixelFormat = THREE.RedFormat;
+	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.PixelFormat = THREE.RedFormat) {
 		this.width = w;
 		this.height = h;
 		this.itype = itype;
+		this.iformat = iformat;
 	}
 	toString() : string {
-		return this.width + "," + this.height + "," + this.itype;
+		return this.width + "," + this.height + "," + this.itype + "," + this.iformat;
 		//return JSON.stringify(this);
 	}
 }
@@ -178,7 +182,7 @@ class TextureCache {
 
 	_allocTex(key : TextureCacheKey) : lx.Texture {
 		
-		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype });
+		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype, format: key.iformat });
 		var texWrapper = new lx.Texture(tex);
 
 		var keyString : string = texWrapper.toString();
@@ -251,24 +255,25 @@ export var textureCache = new TextureCache();
 type UniformMap = { [uniform: string]: THREE.IUniform };
 
 interface ShadeOpts {
-	releaseFirstInputTex: boolean;
+	releaseFirstInputTex?: boolean;
 	toScreen?: boolean;
 	scale?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
+	iformat?: THREE.PixelFormat;
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	lib?: string,
 }
 
-export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
+export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts = {}) : lx.Texture | null {
 	const wrappedTexs = texs.map(t => new lx.Texture(t));
 
-	options = options || {};
 	var processedOptions = {
-		releaseFirstInputTex: options.releaseFirstInputTex,
+		releaseFirstInputTex: options.releaseFirstInputTex !== undefined ? options.releaseFirstInputTex : false,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 		itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
+		iformat: options.iformat !== undefined ? options.iformat : wrappedTexs[0].get().format,
 		uniforms: options.uniforms || { },
 		vshaderExtra: options.vshaderExtra || "",
 		lib: options.lib || "",
@@ -283,7 +288,7 @@ export function shade2(texs : Array<TextureUnion>, fshader : string, options : S
 		var size = new THREE.Vector2(wrappedTexs[0].get().image.width, wrappedTexs[0].get().image.height);
 		size = size.multiply(processedOptions.scale);
 		
-		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype);
+		const key = new TextureCacheKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
 		renderTarget = textureCache.get(key);
 		//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 	}

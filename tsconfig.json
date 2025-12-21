@@ -3,6 +3,7 @@
 	  "outDir": "./built",
 	  "allowJs": true,
 	  "target": "es2017",
+	  "types": ["three"],
 	  "noEmitOnError": true,
 	  /*"noImplicitAny": true,
 	  "strictNullChecks": true,

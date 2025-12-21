@@ -146,8 +146,8 @@ class TextureCacheKey {
 	width : number = 0;
 	height : number = 0;
 	itype : THREE.TextureDataType;
-	iformat: THREE.PixelFormat = THREE.RedFormat;
-	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.PixelFormat = THREE.RedFormat) {
+	iformat: THREE.AnyPixelFormat = THREE.RedFormat;
+	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.AnyPixelFormat = THREE.RedFormat) {
 		console.assert(Number.isInteger(w));
 		console.assert(Number.isInteger(h));
 		this.width = w;
@@ -271,7 +271,7 @@ interface ShadeOpts {
 	toScreen?: boolean;
 	scale?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
-	iformat?: THREE.PixelFormat;
+	iformat?: THREE.AnyPixelFormat;
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	lib?: string,

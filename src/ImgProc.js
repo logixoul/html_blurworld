@@ -69,20 +69,19 @@ export function extrude_oneIteration(state, inTex, releaseFirstInputTex) {
 	let stateLocal = util.cloneTex(state);
 	if(releaseFirstInputTex) {
 		GpuCompute.texturePool.onNoLongerUsingTex(state);
-		//state.dispose();
 	}
 	let blurred = blur(stateLocal, 1.0, 1.0, false);
 	
-	stateLocal = GpuCompute.run([blurred, stateLocal], `
-		float blurred = fetch1(tex1);
-		float state = fetch1(tex2);
+	stateLocal = GpuCompute.run([stateLocal, blurred], `
+		float state = fetch1(tex1);
+		float blurred = fetch1(tex2);
 		state = mix(blurred, state, 0.0);
 		_out.r = state;`
 		, {
 			releaseFirstInputTex: true,
-			dispose: [ stateLocal ]
 		}
 		);
+	blurred.willNoLongerUse();
 	//state = fastBlur(state, releaseFirstInputTex);
 	stateLocal = GpuCompute.run([stateLocal, inTex], `
 		float state = fetch1(tex1);
@@ -137,8 +136,7 @@ export function extrude(inTex, iters, scaleArg, releaseFirstInputTex) {
 			releaseFirstInputTex: true
 		});
 	if(releaseFirstInputTex) {
-		textureCache.onNoLongerUsingTex(inTex);
-		//inTex.dispose();
+		inTex.willNoLongerUse();
 	}
 	return state;
 }

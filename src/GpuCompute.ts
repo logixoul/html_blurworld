@@ -306,7 +306,6 @@ interface ShadeOpts {
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	lib?: string,
-	dispose?: Array<TextureUnion>, // todo remove
 }
 
 export function computeToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
@@ -329,14 +328,7 @@ export function compute_base(texs : Array<TextureUnion>, fshader : string, optio
 		uniforms: options.uniforms || { },
 		vshaderExtra: options.vshaderExtra || "",
 		lib: options.lib || "",
-		dispose: options.dispose || []
 	};
-	const wrappedTexsToDispose : Array<TextureWrapper> = [];
-	if(options.dispose !== undefined) {
-		for(const t of options.dispose) {
-			wrappedTexsToDispose.push(new TextureWrapper(t));
-		}
-	}
 	
 	var renderTarget;
 	if(options.toScreen) {
@@ -426,9 +418,6 @@ export function compute_base(texs : Array<TextureUnion>, fshader : string, optio
 
 	if(processedOptions.releaseFirstInputTex) {
 		texturePool.onNoLongerUsingTex(wrappedTexs[0]);
-	}
-	for(const t of wrappedTexsToDispose) {
-		texturePool.onNoLongerUsingTex(t);
 	}
 	if(renderTarget === null)
 		return null;

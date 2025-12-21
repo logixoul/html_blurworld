@@ -6,44 +6,30 @@ import * as System from './System';
 export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | TextureWrapper);
 
 export class TextureWrapper {
-	private actualTextureObj: THREE.Texture;
-	private renderTargetObj?: THREE.WebGLRenderTarget;
-	private widthValue!: number;
-	private heightValue!: number;
+	private readonly actualTextureObj: THREE.Texture;
+	private readonly renderTargetObj?: THREE.WebGLRenderTarget;
+	private isRenderTarget(): boolean {
+		return this.renderTargetObj !== undefined;
+	}
 	set magFilter(value: THREE.MagnificationTextureFilter) {
 		this.actualTextureObj.magFilter = value;
 	}
-	private calculateSize() {
-		if(this.renderTargetObj !== undefined) {
-			this.widthValue = this.renderTargetObj.width;
-			this.heightValue = this.renderTargetObj.height;
-		}
-		else if(this.actualTextureObj !== undefined) {
-			if(this.actualTextureObj.image !== undefined) {
-				const image = this.actualTextureObj.image as { width: number; height: number };
-				this.widthValue = image.width;
-				this.heightValue = image.height;
-			} else {
-				this.widthValue = 0;
-				this.heightValue = 0;
-			}
-		} else {
-			throw "error";
-		}
+	get size(): { width: number; height: number } {
+		if (this.isRenderTarget()) return { width: this.renderTargetObj!.width, height: this.renderTargetObj!.height };
+		const img = this.actualTextureObj.image as { width: number; height: number } | undefined;
+		if(!img)
+			throw new Error("TextureWrapper.size: texture image is undefined");
+		return { width: img.width, height: img.height };
 	}
-	get width(): number {
-		return this.widthValue;
-	}
-	get height(): number {
-		return this.heightValue;
-	}
+	get width() : number { return this.size.width; }
+	get height(): number { return this.size.height; }
 	get(): THREE.Texture {
 		return this.actualTextureObj;
 	}
 	getRenderTarget(): THREE.WebGLRenderTarget {
-		if(this.renderTargetObj === undefined)
-			throw "error";
-		return this.renderTargetObj;
+		if(!this.isRenderTarget())
+			throw new Error("TextureWrapper.getRenderTarget(): not a render target");
+		return this.renderTargetObj!;
 	}
 	constructor(param : TextureUnion) {
 		if(param instanceof THREE.Texture) {
@@ -54,13 +40,12 @@ export class TextureWrapper {
 			this.actualTextureObj = asRt.texture;
 			this.renderTargetObj = asRt;
 		} else if(param instanceof TextureWrapper) {
-			var asLxTex = param as TextureWrapper;
-			this.actualTextureObj = asLxTex.actualTextureObj;
-			this.renderTargetObj = asLxTex.renderTargetObj;
+			var asTextureWrapper = param as TextureWrapper;
+			this.actualTextureObj = asTextureWrapper.actualTextureObj;
+			this.renderTargetObj = asTextureWrapper.renderTargetObj;
 		} else {
-			throw "error";
+			throw new Error("TextureWrapper: invalid parameter");
 		}
-		this.calculateSize();
 	}
 	toString() {
 		return this.actualTextureObj.id.toString();

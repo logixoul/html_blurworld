@@ -8,5 +8,4 @@ export function getMousePos() : THREE.Vector2 {
 
 document.addEventListener("mousemove", e => {
 	mousePos = new THREE.Vector2(e.clientX, e.clientY);
-	console.log("mouse moved: ", mousePos);
 });

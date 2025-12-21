@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { shade2, textureCache, lx } from './shade'
 
-export var renderer = new THREE.WebGLRenderer();
+export var renderer = new THREE.WebGLRenderer({antialias: true });
 document.body.appendChild( renderer.domElement );
 
 export function cloneTex(inTex : any) {

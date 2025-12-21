@@ -1,5 +1,8 @@
 import { globals } from "./Globals.js";
 import * as THREE from "three";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import * as util from "./util";
 import * as KeysHeld from "./KeysHeld";
 
@@ -10,21 +13,24 @@ type RenderTargetTexture = {
 
 export class Input {
 	private scene: THREE.Scene;
-	private circleGeometry: THREE.CircleGeometry;
-	private paintMaterial: THREE.MeshBasicMaterial;
-	private circleMesh: THREE.Mesh;
+	private lineGeometry: LineSegmentsGeometry;
+	private paintMaterial: LineMaterial;
+	private lineSegments: LineSegments2;
 	private lastTouchPos: THREE.Vector2 | undefined;
+	private lastMousePos: THREE.Vector2 | undefined;
 
 	constructor() {
 		this.scene = new THREE.Scene();
-		this.circleGeometry = new THREE.CircleGeometry(2, 32);
-		//this.circleGeometry = new THREE.LineGeometry(5, 32);
-		this.paintMaterial = new THREE.MeshBasicMaterial({
-			side: THREE.DoubleSide,
+		this.lineGeometry = new LineSegmentsGeometry();
+		this.lineGeometry.setPositions([0, 0, 0, 0, 0, 0]);
+		this.paintMaterial = new LineMaterial({
+			color: 0xffffff,
+			linewidth: 4,
+			worldUnits: false,
+			alphaToCoverage: true
 		});
-		this.circleMesh = new THREE.Mesh(this.circleGeometry, this.paintMaterial);
-		this.circleMesh.position.set(0.5, 0.5, 0);
-		this.scene.add(this.circleMesh);
+		this.lineSegments = new LineSegments2(this.lineGeometry, this.paintMaterial);
+		this.scene.add(this.lineSegments);
 
 		document.addEventListener("mousedown", this.onMouseDown);
 		document.addEventListener("mousemove", this.onMouseMove);
@@ -47,11 +53,13 @@ export class Input {
 		document.body.removeEventListener("contextmenu", this.onContextMenu);
 	}
 
-	private drawCircleToTex(tex: RenderTargetTexture, center: THREE.Vector2) {
+	private drawSegmentToTex(tex: RenderTargetTexture, p1: THREE.Vector2, p2: THREE.Vector2) {
 		const image = tex.get().image as { width: number; height: number };
 		const camera = new THREE.OrthographicCamera(0, image.width, image.height, 0, -1000, 1000);
 
-		this.circleMesh.position.set(center.x, center.y, 0);
+		this.paintMaterial.resolution.set(image.width, image.height);
+		this.lineGeometry.setPositions([p1.x, p1.y, 0, p2.x, p2.y, 0]);
+		this.lineSegments.computeLineDistances();
 
 		util.renderer.setRenderTarget(tex.getRenderTarget());
 		util.renderer.autoClear = false;
@@ -68,10 +76,12 @@ export class Input {
 	private drawLine(tex: RenderTargetTexture, p1Projected: THREE.Vector2, p2Projected: THREE.Vector2) {
 		const p1 = this.unproject(p1Projected.x, p1Projected.y, globals.stateTex0.get());
 		const p2 = this.unproject(p2Projected.x, p2Projected.y, globals.stateTex0.get());
-		for (let i = 0; i < 1; i += 0.1 / p1.distanceTo(p2)) {
-			const p = p1.lerp(p2, i);
-			this.drawCircleToTex(tex, p);
+		if (p1.distanceTo(p2) < 0.001) {
+			const p2Nudged = p2.clone().addScalar(0.01);
+			this.drawSegmentToTex(tex, p1, p2Nudged);
+			return;
 		}
+		this.drawSegmentToTex(tex, p1, p2);
 	}
 
 	private onMouseDown = (_e: MouseEvent) => {
@@ -84,13 +94,14 @@ export class Input {
 	};
 
 	private onMouseMove = (e: MouseEvent) => {
+		const newPos = new THREE.Vector2(e.x, e.y);
+		const oldPos : THREE.Vector2 = this.lastMousePos ?? newPos;
 		const leftBtnPressed = (e.buttons & 1) != 0;
 		const rightBtnPressed = (e.buttons & 2) != 0;
 		const middleBtnPressed = (e.buttons & 4) != 0;
 		if (leftBtnPressed || rightBtnPressed || middleBtnPressed) {
 			const shouldErase = rightBtnPressed;
-			const oldPos = new THREE.Vector2(e.x, e.y);
-			const newPos = new THREE.Vector2(e.x - e.movementX, e.y - e.movementY);
+			console.log("mouse moved: ", oldPos, newPos);
 			if (shouldErase) {
 				this.paintMaterial.color = new THREE.Color(0, 0, 0);
 				this.drawLine(globals.stateTex0, oldPos, newPos);
@@ -106,6 +117,7 @@ export class Input {
 				this.drawLine(destinationTexture, oldPos, newPos);
 			}
 		}
+		this.lastMousePos = newPos;
 	};
 
 	private onTouchStart = (_e: TouchEvent) => {

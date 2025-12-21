@@ -157,47 +157,39 @@ export class App {
 		
 		if (!this.assetsLoaded)
 			return;
-
-		globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
-		globals.stateTex1 = this.doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
-		const stateTex0Shrunken = shade2([globals.stateTex0, globals.stateTex1], `
-			_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
-			`,
-			{
-				releaseFirstInputTex: false
-			})!;
-		/*const stateTex1Shrunken = shade2([globals.stateTex1, globals.stateTex0], `
-			_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
-			`)!;*/
-		/*const stateTexIntersection = shade2([globals.stateTex1, globals.stateTex0], `
-			_out.r = fetch1(tex1) * fetch1(tex2);
-			`)!;*/
-		globals.stateTex0.willNoLongerUse();
-		//globals.stateTex1.willNoLongerUse();
-		globals.stateTex0 = stateTex0Shrunken;
+		if(!KeysHeld.global_keysHeld["digit1"]) {
+			globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
+			globals.stateTex1 = this.doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
+			const stateTex0Shrunken = shade2([globals.stateTex0, globals.stateTex1], `
+				_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
+				`,
+				{
+					releaseFirstInputTex: false
+				})!;
+			globals.stateTex0.willNoLongerUse();
+			globals.stateTex0 = stateTex0Shrunken;
+		}
 		//globals.stateTex1 = stateTex1Shrunken;
 
 		const iters = 30;// * System.getMousePos().x / window.innerWidth;
 
 		var extruded0 = ImgProc.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		var extruded1 = ImgProc.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
-		//var extruded2 = ImgProc.extrude(stateTexIntersection, globals.scale, /*releaseFirstInputTex=*/ false);
-		/*if(KeysHeld.global_keysHeld["digit1"]) {
-			var toDraw = shade2([tex2!], `
+		if(KeysHeld.global_keysHeld["digit1"]) {
+			var toDraw = shade2([globals.stateTex0?.get()!], `
 			float state = fetch1(tex1);
 			//state = .5 * state;
 			_out.r = state;`
 			, {
-				releaseFirstInputTex: true
+				releaseFirstInputTex: false
 			}
 			);
 			util.drawToScreen(toDraw, false);
 			return;
-		}*/
+		}
 
 		let tex3d_0 = this.make3d(extruded0!, new THREE.Vector3(1.5, 0.2, 0.0), { releaseFirstInputTex: true });
 		let tex3d_1 = this.make3d(extruded1!, new THREE.Vector3(0.0, 0.2, 1.5), { releaseFirstInputTex: true });
-		//let tex3d_2 = make3d(extruded2!, new THREE.Vector3(1.5, 0.2, 1.5), { releaseFirstInputTex: true });
 		let tex3d = shade2([tex3d_0?.get()!, tex3d_1?.get()!, this.backgroundPicTex?.get()!], `
 			vec3 col0 = fetch3(tex1);
 			vec3 col1 = fetch3(tex2);

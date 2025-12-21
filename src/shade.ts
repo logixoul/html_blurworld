@@ -190,7 +190,6 @@ class TextureCache {
 	numTexturesDbg = 0;
 
 	_allocTex(key : TextureCacheKey) : lx.Texture {
-		console.log("Allocating texture: " + key.toPrettyString());
 		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype, format: key.iformat });
 		var texWrapper = new lx.Texture(tex);
 
@@ -268,7 +267,7 @@ export var textureCache = new TextureCache();
 type UniformMap = { [uniform: string]: THREE.IUniform };
 
 interface ShadeOpts {
-	releaseFirstInputTex?: boolean;
+	releaseFirstInputTex: boolean;
 	toScreen?: boolean;
 	scale?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
@@ -278,11 +277,11 @@ interface ShadeOpts {
 	lib?: string,
 }
 
-export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts = {}) : lx.Texture | null {
+export function shade2(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : lx.Texture | null {
 	const wrappedTexs = texs.map(t => new lx.Texture(t));
 
 	var processedOptions = {
-		releaseFirstInputTex: options.releaseFirstInputTex !== undefined ? options.releaseFirstInputTex : false,
+		releaseFirstInputTex: options.releaseFirstInputTex,
 		toScreen: options.toScreen !== undefined ? options.toScreen : false,
 		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 		itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,

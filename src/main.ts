@@ -145,7 +145,10 @@ function animate(now: DOMHighResTimeStamp) {
 	globals.stateTex1 = doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
 	const stateTex0Shrunken = shade2([globals.stateTex0, globals.stateTex1], `
 		_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
-		`)!;
+		`,
+		{
+			releaseFirstInputTex: false
+		})!;
 	/*const stateTex1Shrunken = shade2([globals.stateTex1, globals.stateTex0], `
 		_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
 		`)!;*/
@@ -188,9 +191,9 @@ function animate(now: DOMHighResTimeStamp) {
 		col0 = max(col0, vec3(0.0));
 		col1 = max(col1, vec3(0.0));
 		_out.rgb = col0 + col1;
-		`);
-	//extruded0?.willNoLongerUse();
-	//extruded1?.willNoLongerUse();
+		`, {
+			releaseFirstInputTex: false
+		});
 	/*let tex3dThresholded = shade2([tex3d?.get()!], `
 		vec3 col = fetch3();
 		//col *= step(1.0, dot(col, vec3(1.0/3.0)));
@@ -204,14 +207,18 @@ function animate(now: DOMHighResTimeStamp) {
 		} else {
 			_out.rgb = vec3(1.0);
 		}
-		`);
+		`, {
+			releaseFirstInputTex: false
+		});
 	tex3d_0?.willNoLongerUse();
 	tex3d_1?.willNoLongerUse();
 	let tex3dBlur = util.cloneTex(tex3dToBlur);
 	let tex3dBlurCollected = util.cloneTex(tex3dToBlur);
 	tex3dBlurCollected = shade2([tex3dBlurCollected?.get()!], `
 		_out.rgb = vec3(0.0); // zero it out
-		`);
+		`, {
+			releaseFirstInputTex: true
+		});
 	for(let i = 0; i < 3; i++) {
 		tex3dBlur = ImgProc.scale(tex3dBlur, 0.5, true);
 		tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, 1.0, true);
@@ -250,6 +257,7 @@ function animate(now: DOMHighResTimeStamp) {
 	//util.drawToScreen(tex3dBlurCollected, false);
 	else
 	util.drawToScreen(tex3dShadowed, false);
+
 	tex3d?.willNoLongerUse();
 	tex3dBlur?.willNoLongerUse();
 	tex3dToBlur?.willNoLongerUse();

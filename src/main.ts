@@ -4,7 +4,7 @@ import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
 import './Input.js'; // for side fx
 import * as util from './util';
-import { Image } from "./Image.js";
+import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import * as KeysHeld from './KeysHeld';
 import * as PresentationForIashu from './presentationForIashu';
@@ -31,7 +31,7 @@ function createStateTex() {
 	//globals.scale = 1;
 	
 	
-	var img = new Image(
+	var img = new Image<Float32Array>(
 		Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
 		Float32Array);
 		//Uint8Array);

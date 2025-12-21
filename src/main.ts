@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { shade2, lx, TextureUnion } from './shade';
 import * as ImgProc from './ImgProc.js';
 import { globals } from './Globals.js';
-import './Input'; // for side fx
+import { Input } from './Input';
 import * as util from './util';
 import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
@@ -62,6 +62,7 @@ function onResize() {
 }
 
 onResize();
+globals.input = new Input();
 
 document.getElementById("loadingScreen")!.style.display = "none";
 

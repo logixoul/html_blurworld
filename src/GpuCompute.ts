@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { renderer } from './util';
-import * as util from './util';
 import { SafeMap } from './SafeMap';
 import * as System from './System';
 
@@ -9,8 +8,34 @@ export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | TextureWra
 export class TextureWrapper {
 	private actualTextureObj: THREE.Texture;
 	private renderTargetObj?: THREE.WebGLRenderTarget;
+	private widthValue!: number;
+	private heightValue!: number;
 	set magFilter(value: THREE.MagnificationTextureFilter) {
 		this.actualTextureObj.magFilter = value;
+	}
+	private calculateSize() {
+		if(this.renderTargetObj !== undefined) {
+			this.widthValue = this.renderTargetObj.width;
+			this.heightValue = this.renderTargetObj.height;
+		}
+		else if(this.actualTextureObj !== undefined) {
+			if(this.actualTextureObj.image !== undefined) {
+				const image = this.actualTextureObj.image as { width: number; height: number };
+				this.widthValue = image.width;
+				this.heightValue = image.height;
+			} else {
+				this.widthValue = 0;
+				this.heightValue = 0;
+			}
+		} else {
+			throw "error";
+		}
+	}
+	get width(): number {
+		return this.widthValue;
+	}
+	get height(): number {
+		return this.heightValue;
 	}
 	get(): THREE.Texture {
 		return this.actualTextureObj;
@@ -35,6 +60,7 @@ export class TextureWrapper {
 		} else {
 			throw "error";
 		}
+		this.calculateSize();
 	}
 	toString() {
 		return this.actualTextureObj.id.toString();
@@ -280,7 +306,7 @@ interface ShadeOpts {
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	lib?: string,
-	dispose?: Array<TextureUnion>,
+	dispose?: Array<TextureUnion>, // todo remove
 }
 
 export function computeToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
@@ -316,8 +342,7 @@ export function compute_base(texs : Array<TextureUnion>, fshader : string, optio
 	if(options.toScreen) {
 		renderTarget = null;
 	} else {
-		const baseSize = getTextureSize(wrappedTexs[0].get());
-		var size = new THREE.Vector2(baseSize.width, baseSize.height);
+		var size = new THREE.Vector2(wrappedTexs[0].width, wrappedTexs[0].height);
 		size = size.multiply(processedOptions.scale);
 		size.x = Math.floor(size.x);
 		size.y = Math.floor(size.y);
@@ -347,9 +372,9 @@ export function compute_base(texs : Array<TextureUnion>, fshader : string, optio
 		const tsizeName = "tsize" + (i+1);
 		//uniformsString += "uniform sampler2D " + name + ";";
 		//uniformsString += "uniform vec2 " + tsizeName + ";";
-		var texture : THREE.Texture = wrappedTexs[i].get();
-		params.uniforms![name] = { value: texture };
-		const texSize = getTextureSize(texture);
+		var texture : TextureWrapper = wrappedTexs[i];
+		params.uniforms![name] = { value: texture.get() };
+		const texSize = getTextureSize(texture.get());
 		params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height) };
 		i++;
 	});

@@ -202,10 +202,10 @@ function console_log(s : string) {
 }
 
 class TexturePool {
-	mapOfTextures = new SafeMap<string, Array<TextureWrapper>>(); // key obtained by TexturePoolKey.toString()
-	infos = new SafeMap<string, TextureInfo>(); // key obtained by TextureWrapper.toString()
+	private mapOfTextures = new SafeMap<string, Array<TextureWrapper>>(); // key obtained by TexturePoolKey.toString()
+	private infos = new SafeMap<string, TextureInfo>(); // key obtained by TextureWrapper.toString()
 
-	_setDefaults(tex : THREE.Texture) {
+	private setDefaults(tex : THREE.Texture) {
 		tex.minFilter = THREE.LinearFilter;
 		tex.magFilter = THREE.LinearFilter;
 		tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -256,7 +256,7 @@ class TexturePool {
 			const tex = this._allocTex(key);
 			const vec = [ tex ];
 			this.mapOfTextures.set(keyString, vec);
-			this._setDefaults(tex.get());
+			this.setDefaults(tex.get());
 			return tex;
 		}
 		else {
@@ -267,7 +267,7 @@ class TexturePool {
 				var texInfo = this.infos.checkedGet(tex.toString());
 				if(texInfo.useCount == 0) {
 					//console_log("\treusing");
-					this._setDefaults(tex.get());
+					this.setDefaults(tex.get());
 					texInfo.useCount++;
 					return tex;
 				} else if(texInfo.useCount < 0) {
@@ -278,7 +278,7 @@ class TexturePool {
 			console_log("\tvec doesn't contain an unused ");
 			var tex = this._allocTex(key);
 			vec.push(tex);
-			this._setDefaults(tex.get());
+			this.setDefaults(tex.get());
 			return tex;
 		}
 	}

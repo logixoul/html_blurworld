@@ -8,7 +8,6 @@ import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import * as KeysHeld from './KeysHeld';
 import { PresentationForIashu } from './presentationForIashu';
-import * as System from './System';
 
 export class App {
 	private backgroundPicTex!: GpuCompute.TextureWrapper;
@@ -153,6 +152,11 @@ export class App {
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
+		let mousePos = globals.input.mousePos;
+		//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
+		this.compute.setGlobalUniform("mouse", mousePos);
+		this.compute.setGlobalUniform("time", 0.0); // todo
+		
 		let texturesToRelease : GpuCompute.TextureWrapper[] = [];
 
 		this.framerateCounter.update(now);
@@ -177,7 +181,7 @@ export class App {
 		}
 		//globals.stateTex1 = stateTex1Shrunken;
 
-		const iters = 30;// * System.getMousePos().x / window.innerWidth;
+		const iters = 30;// * globals.input.mousePos.x / window.innerWidth;
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		var extruded1 = this.imageProcessor.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);

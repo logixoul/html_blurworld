@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import * as System from './System';
 
 export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | TextureWrapper);
 
@@ -266,9 +265,14 @@ interface ShadeOpts {
 export class GpuComputeContext {
 	private threeJsRenderer : THREE.WebGLRenderer;
 	private texturePool = new TexturePool();
+	readonly #globalUniforms = new Map<string, UniformUnion>();
 
 	constructor(threeJsRenderer : THREE.WebGLRenderer) {
 		this.threeJsRenderer = threeJsRenderer;
+	}
+
+	setGlobalUniform(name : string, value : UniformUnion) {
+		this.#globalUniforms.set(name, value);
 	}
 
 	willNoLongerUse(texture : TextureWrapper) {
@@ -305,6 +309,10 @@ export class GpuComputeContext {
 			vshaderExtra: options.vshaderExtra || "",
 			lib: options.functions || "",
 		};
+
+		//processedOptions.uniforms = new Map<string, UniformUnion>(processedOptions.uniforms);
+		for(const [key, value] of this.#globalUniforms)
+			processedOptions.uniforms[key] = value;
 		
 		var renderTarget;
 		if(options.toScreen) {
@@ -321,9 +329,6 @@ export class GpuComputeContext {
 		}
 
 
-		let mousePos = System.getMousePos();
-		//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
-		
 		var i = 0;
 		texs.forEach(tex => {
 			const name = "tex" + (i+1);
@@ -335,22 +340,18 @@ export class GpuComputeContext {
 			i++;
 		});
 
-		processedOptions.uniforms["time"] = 0.0;
-		processedOptions.uniforms["mouse"] = mousePos;
 		var uniformsString = "";
 		Object.keys(processedOptions.uniforms).forEach(key => { // todo: do i need the '!'?
 			var value : UniformUnion = processedOptions.uniforms[key];
 			uniformsString += "uniform " + mapType(value) + " " + key + ";";
 		});
 		
-
 		var params : THREE.ShaderMaterialParameters = {
 			uniforms: { }
 		};
-		Object.keys(processedOptions.uniforms).forEach(key => {
-			var value=processedOptions.uniforms[key];
+		for (const [key, value] of Object.entries(processedOptions.uniforms)) {
 			params.uniforms![key] = new THREE.Uniform(value);
-		});
+		}
 		
 		const fshader_complete = uniformsString + intro + processedOptions.lib + "	void shade() {" + fshader + outro;
 		var cachedMaterial = programCache[fshader_complete];

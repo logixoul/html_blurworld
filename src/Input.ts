@@ -18,6 +18,12 @@ export class Input {
 	private lineSegments: LineSegments2;
 	private lastTouchPos: THREE.Vector2 | undefined;
 	private lastMousePos: THREE.Vector2 | undefined;
+	#mousePos : THREE.Vector2 = new THREE.Vector2(0, 0);
+
+	get mousePos() : THREE.Vector2 {
+		return this.lastMousePos!;
+	}
+
 
 	constructor() {
 		this.scene = new THREE.Scene();

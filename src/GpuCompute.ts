@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { renderer } from './util';
-import { SafeMap } from './SafeMap';
 import * as System from './System';
 
 export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | TextureWrapper);
@@ -202,8 +201,8 @@ function console_log(s : string) {
 }
 
 class TexturePool {
-	private mapOfTextures = new SafeMap<string, Array<TextureWrapper>>(); // key obtained by TexturePoolKey.toString()
-	private infos = new SafeMap<string, TextureInfo>(); // key obtained by TextureWrapper.toString()
+	private mapOfTextures = new Map<string, Array<TextureWrapper>>(); // key obtained by TexturePoolKey.toString()
+	private infos = new Map<string, TextureInfo>(); // key obtained by TextureWrapper.toString()
 
 	private setDefaults(tex : THREE.Texture) {
 		tex.minFilter = THREE.LinearFilter;
@@ -260,11 +259,11 @@ class TexturePool {
 			return tex;
 		}
 		else {
-			const vec = this.mapOfTextures.checkedGet(keyString);
+			const vec = this.mapOfTextures.get(keyString)!;
 			
 			for(let i = 0; i < vec.length; i++) {
 				let tex : TextureWrapper = vec[i];
-				var texInfo = this.infos.checkedGet(tex.toString());
+				var texInfo = this.infos.get(tex.toString())!;
 				if(texInfo.useCount == 0) {
 					//console_log("\treusing");
 					this.setDefaults(tex.get());

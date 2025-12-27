@@ -260,7 +260,7 @@ interface ShadeOpts {
 	iformat?: THREE.PixelFormat;
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
-	lib?: string,
+	functions?: string,
 }
 
 export class GpuComputeContext {
@@ -303,7 +303,7 @@ export class GpuComputeContext {
 			iformat: options.iformat !== undefined ? options.iformat : wrappedTexs[0].get().format as THREE.PixelFormat,
 			uniforms: options.uniforms || { },
 			vshaderExtra: options.vshaderExtra || "",
-			lib: options.lib || "",
+			lib: options.functions || "",
 		};
 		
 		var renderTarget;

@@ -15,7 +15,7 @@ export function init() {
 
 function mul(inTex : GpuCompute.TextureWrapper, amount : number, releaseFirstInputTex: boolean) {
     return GpuCompute.run([inTex],`
-		_out.rgb = fetch3() * mul;
+		_out.rgb = texture().rgb * mul;
 	`,
 	{
 		releaseFirstInputTex: releaseFirstInputTex,
@@ -27,8 +27,8 @@ function mul(inTex : GpuCompute.TextureWrapper, amount : number, releaseFirstInp
 function local_extrude_oneIteration(state : GpuCompute.TextureWrapper, inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
 	state = ImgProc.blur(state, 1.0, 1.0, releaseFirstInputTex)!;
 	state = GpuCompute.run([state, inTex], `
-		float state = fetch1(tex1);
-		float binary = fetch1(tex2);
+		float state = texture(tex1).r;
+		float binary = texture(tex2).r;
 		state *= binary;
 		state = .5 * (state + binary);
 		_out.r = state;`
@@ -47,7 +47,7 @@ function extrude_oneIterationForPresentation(state: GpuCompute.TextureWrapper, i
 function extrudeForPresentation(inTex : GpuCompute.TextureWrapper) {
 	var state : GpuCompute.TextureWrapper = util.cloneTex(inTex)!;
 	state = GpuCompute.run([state], `
-		_out.rgb = fetch3();
+		_out.rgb = texture().rgb;
 	`, {
 		scale: new THREE.Vector2(.3, .3),
 		releaseFirstInputTex: true

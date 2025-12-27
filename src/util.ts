@@ -6,7 +6,7 @@ export var renderer = new THREE.WebGLRenderer({antialias: true });
 document.body.appendChild( renderer.domElement );
 
 export function cloneTex(inTex : any) {
-	return GpuCompute.run([inTex], `_out = fetch4();`, { releaseFirstInputTex: false});
+	return GpuCompute.run([inTex], `_out = texture();`, { releaseFirstInputTex: false});
 }
 
 export function drawToScreen(inputTex : any, releaseFirstInputTex : boolean) : void {

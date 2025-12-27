@@ -22,7 +22,7 @@ export class App {
 			'assets/milkyway.png',
 			() => {
 				this.backgroundPicTex = GpuCompute.run([this.backgroundPicTexOrig], `
-				_out.rgb = fetch3();
+				_out.rgb = texture().rgb;
 				_out.rgb /= 1.0 - 0.99*_out.rgb;
 				//_out.rgb = pow(_out.rgb, vec3(2.2));
 				`, {
@@ -72,7 +72,7 @@ export class App {
 		stateTex.needsUpdate = true;
 
 		stateTex = GpuCompute.run([stateTex],
-			`_out.r = fetch1();`, { itype:
+			`_out.r = texture().r;`, { itype:
 				//THREE.UnsignedByteType,
 				//THREE.HalfFloatType,
 				THREE.FloatType,
@@ -91,7 +91,7 @@ export class App {
 		//state = ImgProc.fastBlur(state, /*releaseFirstInputTex=*/ true);
 		state = ImgProc.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
 		state = GpuCompute.run([state?.get()], `
-			float f = fetch1();
+			float f = texture().r;
 			//float fw = fwidth(f)*4.0;
 			//f = smoothstep(.5-fw, .5+fw, f);
 			f = linearstep(0.1, 0.9, f);
@@ -111,15 +111,15 @@ export class App {
 	private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
 		let tex3d = GpuCompute.run([heightmap], `
-			float here = fetch1();
+			float here = texture().r;
 			vec2 d = vec2(
-				here - fetch1(tex1, tc - vec2(tsize1.x, 0)),
-				here - fetch1(tex1, tc - vec2(0, tsize1.y))
+				here - texture(tc - vec2(tsize1.x, 0)).r,
+				here - texture(tc - vec2(0, tsize1.y)).r
 				);
 			d *= 102.0f;
 			d.x *= -1.0f * .10;
 			
-			//_out.rgb = fetch3(tex2);//vec3(0,.2,.5);
+			//_out.rgb = texture(tex2).rgb;//vec3(0,.2,.5);
 			const vec2 specThres = vec2(-0.02);
 			vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.5);
 			vec2 fw = fwidth(d);
@@ -161,7 +161,7 @@ export class App {
 			globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 			globals.stateTex1 = this.doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
 			const stateTex0Shrunken = GpuCompute.run([globals.stateTex0, globals.stateTex1], `
-				_out.r = max(0.0, fetch1(tex1) - fetch1(tex2));
+				_out.r = max(0.0, texture(tex1).r - texture(tex2).r);
 				`,
 				{
 					releaseFirstInputTex: false
@@ -177,7 +177,7 @@ export class App {
 		var extruded1 = ImgProc.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
 		if(KeysHeld.global_keysHeld["digit1"]) {
 			var toDraw = GpuCompute.run([globals.stateTex0], `
-			float state = fetch1(tex1);
+			float state = texture(tex1).r;
 			//state = .5 * state;
 			_out.r = state;`
 			, {
@@ -191,8 +191,8 @@ export class App {
 		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(1.5, 0.2, 0.0), { releaseFirstInputTex: true });
 		let tex3d_1 = this.make3d(extruded1, new THREE.Vector3(0.0, 0.2, 1.5), { releaseFirstInputTex: true });
 		let tex3d = GpuCompute.run([tex3d_0, tex3d_1, this.backgroundPicTex], `
-			vec3 col0 = fetch3(tex1);
-			vec3 col1 = fetch3(tex2);
+			vec3 col0 = texture(tex1).rgb;
+			vec3 col1 = texture(tex2).rgb;
 			if(col0.r < 0.0 && col1.r < 0.0) {
 				_out.rgb = vec3(-1.0); // use sentinel value for "no data"
 				return;
@@ -204,13 +204,13 @@ export class App {
 				releaseFirstInputTex: false
 			});
 		/*let tex3dThresholded = GpuCompute.run([tex3d], `
-			vec3 col = fetch3();
+			vec3 col = texture().rgb;
 			//col *= step(1.0, dot(col, vec3(1.0/3.0)));
 			_out.rgb = col;
 			`);*/
 		let tex3dToBlur = GpuCompute.run([globals.stateTex0, globals.stateTex1], `
-			vec3 col0 = fetch3(tex1);
-			vec3 col1 = fetch3(tex2);
+			vec3 col0 = texture(tex1).rgb;
+			vec3 col1 = texture(tex2).rgb;
 			if(col0 == vec3(0.0) && col1 == vec3(0.0)) {
 				_out.rgb = vec3(0.0); // use black where no data
 			} else {
@@ -232,22 +232,22 @@ export class App {
 			tex3dBlur = ImgProc.scale(tex3dBlur, 0.5, true);
 			tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, 1.0, true);
 			tex3dBlurCollected = GpuCompute.run([tex3dBlurCollected, tex3dBlur], `
-				_out.rgb = fetch3(tex1) + fetch3(tex2);
+				_out.rgb = texture(tex1).rgb + texture(tex2).rgb;
 				`, {
 					releaseFirstInputTex: true
 				});
 		}
 		/*let tex3dBloom = GpuCompute.run([tex3d, tex3dBlurCollected], `
-			_out.rgb = fetch3(tex1) * 1.0 + fetch3(tex2) * 1.0;
+			_out.rgb = texture(tex1).rgb * 1.0 + texture(tex2).rgb * 1.0;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {
 				releaseFirstInputTex: false
 			});*/
 		let tex3dShadowed = GpuCompute.run([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
-			vec3 col = fetch3(tex1);
-			float shadow = fetch1(tex2);
-			vec3 background = fetch3(tex3);
+			vec3 col = texture(tex1).rgb;
+			float shadow = texture(tex2).r;
+			vec3 background = texture(tex3).rgb;
 			if(col.r < 0.0) {
 				col = background; // use background where no data
 				//col /= 1.0 + pow(shadow, 4.0);

@@ -104,43 +104,16 @@ const intro = `
 	varying vec2 vUv;
 	vec4 _out;
 	vec2 tc;
-	vec4 fetch4(sampler2D tex_, vec2 tc_) {
-		return texture(tex_, tc_).rgba;
+	
+	vec4 texture() {
+		return texture(tex1, tc);
 	}
-	vec3 fetch3(sampler2D tex_, vec2 tc_) {
-		return texture(tex_, tc_).rgb;
+	vec4 texture(sampler2D tex_) {
+		return texture(tex_, tc);
 	}
-	vec2 fetch2(sampler2D tex_, vec2 tc_) {
-		return texture(tex_, tc_).rg;
+	vec4 texture(vec2 tc_) {
+		return texture(tex1, tc_);
 	}
-	float fetch1(sampler2D tex_, vec2 tc_) {
-		return texture(tex_, tc_).r;
-	}
-	vec4 fetch4(sampler2D tex_) {
-		return texture(tex_, tc).rgba;
-	}
-	vec3 fetch3(sampler2D tex_) {
-		return texture(tex_, tc).rgb;
-	}
-	vec2 fetch2(sampler2D tex_) {
-		return texture(tex_, tc).rg;
-	}
-	float fetch1(sampler2D tex_) {
-		return texture(tex_, tc).r;
-	}
-	vec4 fetch4() {
-		return texture(tex1, tc).rgba;
-	}
-	vec3 fetch3() {
-		return texture(tex1, tc).rgb;
-	}
-	vec2 fetch2() {
-		return texture(tex1, tc).rg;
-	}
-	float fetch1() {
-		return texture(tex1, tc).r;
-	}
-
 `;
 
 const outro = `

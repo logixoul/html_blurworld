@@ -249,7 +249,7 @@ class TexturePool {
 	}
 }
 
-type UniformUnion = number | THREE.Vector2 | THREE.Vector3;
+type UniformUnion = number | THREE.Vector2 | THREE.Vector3 | THREE.Texture;
 type UniformMap = { [uniform: string]: UniformUnion };
 
 interface ShadeOpts {
@@ -323,40 +323,35 @@ export class GpuComputeContext {
 
 		let mousePos = System.getMousePos();
 		//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
-		var params : THREE.ShaderMaterialParameters = {
-			uniforms: {
-				time: { value: 0.0 },
-				mouse: { value: mousePos },
-			}
-		};
 		
-		var uniformsString = "";
-
 		var i = 0;
 		texs.forEach(tex => {
 			const name = "tex" + (i+1);
 			const tsizeName = "tsize" + (i+1);
 			var texture : TextureWrapper = wrappedTexs[i];
-			params.uniforms![name] = { value: texture.get() };
+			processedOptions.uniforms[name] = texture.get();
 			const texSize = getTextureSize(texture.get());
-			params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height) };
+			processedOptions.uniforms[tsizeName] = new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height);
 			i++;
 		});
 
-		Object.keys(processedOptions.uniforms).forEach(key => {
-			var value=processedOptions.uniforms[key];
-			params.uniforms![key] = { value: new THREE.Uniform(value) };
-		});
-		Object.keys(params.uniforms!).forEach(key => { // todo: do i need the '!'?
-			var value=params.uniforms![key].value;
-			// for things like `uniforms: { mul: new THREE.Uniform(amount) }`
-			if(value instanceof THREE.Uniform) { // todo: improve this ugliness
-				value = value.value;
-				params.uniforms![key].value = value;
-			}
+		processedOptions.uniforms["time"] = 0.0;
+		processedOptions.uniforms["mouse"] = mousePos;
+		var uniformsString = "";
+		Object.keys(processedOptions.uniforms).forEach(key => { // todo: do i need the '!'?
+			var value : UniformUnion = processedOptions.uniforms[key];
 			uniformsString += "uniform " + mapType(value) + " " + key + ";";
 		});
+		
 
+		var params : THREE.ShaderMaterialParameters = {
+			uniforms: { }
+		};
+		Object.keys(processedOptions.uniforms).forEach(key => {
+			var value=processedOptions.uniforms[key];
+			params.uniforms![key] = new THREE.Uniform(value);
+		});
+		
 		const fshader_complete = uniformsString + intro + processedOptions.lib + "	void shade() {" + fshader + outro;
 		var cachedMaterial = programCache[fshader_complete];
 		var cachedMesh = meshCache[fshader_complete];

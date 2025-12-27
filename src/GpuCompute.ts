@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { renderer } from './util';
 import * as System from './System';
 
 export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | TextureWrapper);
@@ -49,9 +48,6 @@ export class TextureWrapper {
 	toString() {
 		return this.actualTextureObj.id.toString();
 	}
-	willNoLongerUse() {
-		texturePool.onNoLongerUsingTex(this);
-	}
 	dispose() {
 		if(this.renderTargetObj !== undefined) {
 			this.renderTargetObj.dispose();
@@ -98,7 +94,6 @@ void main() {
 	vUv = tc;
 }
 `;
-	
 
 const intro = `
 	varying vec2 vUv;
@@ -128,8 +123,6 @@ const outro = `
 var camera = new THREE.OrthographicCamera( 0, 1, 1, 0, -1000, 1000 );
 
 var geometry = new THREE.PlaneGeometry();
-
-
 
 type ProgramCache = { [key: string]: THREE.ShaderMaterial };
 type MeshCache = { [key: string]: THREE.Mesh };
@@ -200,12 +193,12 @@ class TexturePool {
 		return texWrapper;
 	}
 
-	onNoLongerUsingTex(tex : TextureWrapper) {
+	willNoLongerUse(tex : TextureWrapper) {
 		var info : TextureInfo | undefined = this.infos.get(tex.toString());
 		if(info === undefined) {
 			console.assert(tex.get() instanceof THREE.DataTexture);
 			// `tex` has not been created by TexturePool and is not managed by it.
-			// Since `onNoLongerUsingTex()` has been called, the user tells us that he no longer needs that texture so
+			// Since `willNoLongerUse()` has been called, the user tells us that he no longer needs that texture so
 			// it's safe to just dispose it.
 			tex.dispose();
 			return;
@@ -256,9 +249,8 @@ class TexturePool {
 	}
 }
 
-export var texturePool = new TexturePool();
-
-type UniformMap = { [uniform: string]: THREE.IUniform };
+type UniformUnion = number | THREE.Vector2 | THREE.Vector3;
+type UniformMap = { [uniform: string]: UniformUnion };
 
 interface ShadeOpts {
 	releaseFirstInputTex: boolean;
@@ -271,116 +263,136 @@ interface ShadeOpts {
 	lib?: string,
 }
 
-export function computeToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
-	compute_base(texs, fshader, { ...options, toScreen: true });
-}
+export class GpuComputeContext {
+	private threeJsRenderer : THREE.WebGLRenderer;
+	private texturePool = new TexturePool();
 
-export function run(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper {
-	return compute_base(texs, fshader, options)!;
-}
+	constructor(threeJsRenderer : THREE.WebGLRenderer) {
+		this.threeJsRenderer = threeJsRenderer;
+	}
 
-export function compute_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
-	const wrappedTexs = texs.map(t => new TextureWrapper(t));
+	willNoLongerUse(texture : TextureWrapper) {
+		this.texturePool.willNoLongerUse(texture);
+	}
 
-	var processedOptions = {
-		releaseFirstInputTex: options.releaseFirstInputTex,
-		toScreen: options.toScreen !== undefined ? options.toScreen : false,
-		scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
-		itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
-		iformat: options.iformat !== undefined ? options.iformat : wrappedTexs[0].get().format as THREE.PixelFormat,
-		uniforms: options.uniforms || { },
-		vshaderExtra: options.vshaderExtra || "",
-		lib: options.lib || "",
-	};
-	
-	var renderTarget;
-	if(options.toScreen) {
-		renderTarget = null;
-	} else {
-		var size = new THREE.Vector2(wrappedTexs[0].width, wrappedTexs[0].height);
-		size = size.multiply(processedOptions.scale);
-		size.x = Math.floor(size.x);
-		size.y = Math.floor(size.y);
+	drawToScreen(inputTex : any) : void {
+		this.runStraightToScreen([inputTex], `
+			vec2 texSize = vec2(textureSize(tex1, 0));
+			_out.rgb = texelFetch(tex1, ivec2(tc * texSize), 0).rgb;
+			`, {
+				releaseFirstInputTex: false
+			});
+	}
+
+	runStraightToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
+		this.compute_base(texs, fshader, { ...options, toScreen: true });
+	}
+
+	run(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper {
+		return this.compute_base(texs, fshader, options)!;
+	}
+
+	private compute_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
+		const wrappedTexs = texs.map(t => new TextureWrapper(t));
+
+		var processedOptions = {
+			releaseFirstInputTex: options.releaseFirstInputTex,
+			toScreen: options.toScreen !== undefined ? options.toScreen : false,
+			scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
+			itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
+			iformat: options.iformat !== undefined ? options.iformat : wrappedTexs[0].get().format as THREE.PixelFormat,
+			uniforms: options.uniforms || { },
+			vshaderExtra: options.vshaderExtra || "",
+			lib: options.lib || "",
+		};
 		
-		const key = new TexturePoolKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
-		renderTarget = texturePool.get(key);
-		//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
-	}
-
-
-	let mousePos = System.getMousePos();
-	//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
-	var params : THREE.ShaderMaterialParameters = {
-		uniforms: {
-			time: { value: 0.0 },
-			mouse: { value: mousePos },
+		var renderTarget;
+		if(options.toScreen) {
+			renderTarget = null;
+		} else {
+			var size = new THREE.Vector2(wrappedTexs[0].width, wrappedTexs[0].height);
+			size = size.multiply(processedOptions.scale);
+			size.x = Math.floor(size.x);
+			size.y = Math.floor(size.y);
+			
+			const key = new TexturePoolKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
+			renderTarget = this.texturePool.get(key);
+			//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 		}
-	};
-	
-	//console.log("params.uniforms before adding texs and user uniforms: ", params.uniforms?.mouse.value);
 
-	var uniformsString = "";
 
-	var i = 0;
-	texs.forEach(tex => {
-		const name = "tex" + (i+1);
-		const tsizeName = "tsize" + (i+1);
-		var texture : TextureWrapper = wrappedTexs[i];
-		params.uniforms![name] = { value: texture.get() };
-		const texSize = getTextureSize(texture.get());
-		params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height) };
-		i++;
-	});
+		let mousePos = System.getMousePos();
+		//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
+		var params : THREE.ShaderMaterialParameters = {
+			uniforms: {
+				time: { value: 0.0 },
+				mouse: { value: mousePos },
+			}
+		};
+		
+		var uniformsString = "";
 
-	Object.keys(processedOptions.uniforms).forEach(key => {
-		var value=processedOptions.uniforms[key];
-		params.uniforms![key] = { value: value };
-	});
-	Object.keys(params.uniforms!).forEach(key => { // todo: do i need the '!'?
-		var value=params.uniforms![key].value;
-		// for things like `uniforms: { mul: new THREE.Uniform(amount) }`
-		if(value instanceof THREE.Uniform) { // todo: improve this ugliness
-			value = value.value;
-			params.uniforms![key].value = value;
+		var i = 0;
+		texs.forEach(tex => {
+			const name = "tex" + (i+1);
+			const tsizeName = "tsize" + (i+1);
+			var texture : TextureWrapper = wrappedTexs[i];
+			params.uniforms![name] = { value: texture.get() };
+			const texSize = getTextureSize(texture.get());
+			params.uniforms![tsizeName] = { value: new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height) };
+			i++;
+		});
+
+		Object.keys(processedOptions.uniforms).forEach(key => {
+			var value=processedOptions.uniforms[key];
+			params.uniforms![key] = { value: new THREE.Uniform(value) };
+		});
+		Object.keys(params.uniforms!).forEach(key => { // todo: do i need the '!'?
+			var value=params.uniforms![key].value;
+			// for things like `uniforms: { mul: new THREE.Uniform(amount) }`
+			if(value instanceof THREE.Uniform) { // todo: improve this ugliness
+				value = value.value;
+				params.uniforms![key].value = value;
+			}
+			uniformsString += "uniform " + mapType(value) + " " + key + ";";
+		});
+
+		const fshader_complete = uniformsString + intro + processedOptions.lib + "	void shade() {" + fshader + outro;
+		var cachedMaterial = programCache[fshader_complete];
+		var cachedMesh = meshCache[fshader_complete];
+		if(!cachedMaterial) {
+			cachedMaterial = new THREE.ShaderMaterial( {
+				uniforms: params.uniforms,
+				vertexShader: uniformsString + vertexShader.replace("%VSHADER_EXTRA%", processedOptions.vshaderExtra),
+				fragmentShader: fshader_complete,
+				side: THREE.DoubleSide,
+				blending: THREE.NoBlending
+				} );
+			cachedMesh = new THREE.Mesh( geometry, cachedMaterial );
+
+			programCache[fshader_complete] = cachedMaterial;
+			meshCache[fshader_complete] = cachedMesh;
 		}
-		uniformsString += "uniform " + mapType(value) + " " + key + ";";
-	});
+		var material = cachedMaterial;
+		var mesh = cachedMesh;
+		for (const [key, value] of Object.entries(params.uniforms!)) { // todo: is the "!" necessary?
+			material.uniforms[key] = value;
+		}
 
-	const fshader_complete = uniformsString + intro + processedOptions.lib + "	void shade() {" + fshader + outro;
-	var cachedMaterial = programCache[fshader_complete];
-	var cachedMesh = meshCache[fshader_complete];
-	if(!cachedMaterial) {
-		cachedMaterial = new THREE.ShaderMaterial( {
-			uniforms: params.uniforms,
-			vertexShader: uniformsString + vertexShader.replace("%VSHADER_EXTRA%", processedOptions.vshaderExtra),
-			fragmentShader: fshader_complete,
-			side: THREE.DoubleSide,
-			blending: THREE.NoBlending
-			} );
-		cachedMesh = new THREE.Mesh( geometry, cachedMaterial );
+		mesh.position.set(.5, .5, 0);	
 
-		programCache[fshader_complete] = cachedMaterial;
-		meshCache[fshader_complete] = cachedMesh;
+		scene.add( mesh );
+
+		this.threeJsRenderer.setRenderTarget(renderTarget?.getRenderTarget() ?? null);
+		this.threeJsRenderer.render(scene, camera);
+
+		scene.remove( mesh );
+
+		if(processedOptions.releaseFirstInputTex) {
+			this.willNoLongerUse(wrappedTexs[0]);
+		}
+		if(renderTarget === null)
+			return null;
+		return new TextureWrapper(renderTarget);
 	}
-	var material = cachedMaterial;
-	var mesh = cachedMesh;
-	for (const [key, value] of Object.entries(params.uniforms!)) { // todo: is the "!" necessary?
-		material.uniforms[key] = value;
-	}
-
-	mesh.position.set(.5, .5, 0);	
-
-	scene.add( mesh );
-
-	renderer.setRenderTarget(renderTarget?.getRenderTarget() ?? null);
-	renderer.render(scene, camera);
-
-	scene.remove( mesh );
-
-	if(processedOptions.releaseFirstInputTex) {
-		texturePool.onNoLongerUsingTex(wrappedTexs[0]);
-	}
-	if(renderTarget === null)
-		return null;
-	return new TextureWrapper(renderTarget);
 }

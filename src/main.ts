@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import * as GpuCompute from './GpuCompute';
-import * as ImgProc from './ImgProc.js';
+import { ImageProcessor } from './ImageProcessor';
 import { globals } from './Globals.js';
 import { Input } from './Input';
 import * as util from './util';
 import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import * as KeysHeld from './KeysHeld';
-import * as PresentationForIashu from './presentationForIashu';
+import { PresentationForIashu } from './presentationForIashu';
 import * as System from './System';
 
 export class App {
@@ -16,12 +16,16 @@ export class App {
 	private backgroundPicTexOrig: GpuCompute.TextureWrapper;
 	private framerateCounter: FramerateCounter;
 	private limitFramerateCheckbox: HTMLInputElement;
+	private compute : GpuCompute.GpuComputeContext;
+	private imageProcessor : ImageProcessor;
 
 	constructor() {
+		this.compute = new GpuCompute.GpuComputeContext(util.renderer);
+		this.imageProcessor = new ImageProcessor(this.compute);
 		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
 			'assets/milkyway.png',
 			() => {
-				this.backgroundPicTex = GpuCompute.run([this.backgroundPicTexOrig], `
+				this.backgroundPicTex = this.compute.run([this.backgroundPicTexOrig], `
 				_out.rgb = texture().rgb;
 				_out.rgb /= 1.0 - 0.99*_out.rgb;
 				//_out.rgb = pow(_out.rgb, vec3(2.2));
@@ -41,7 +45,7 @@ export class App {
 		if (window.location.hostname !== "localhost") {
 			document.getElementById("framerate")!.style.display = "none";
 		}
-		PresentationForIashu.init();
+		new PresentationForIashu(this.compute);
 
 		document.defaultView!.addEventListener("resize", this.onResize);
 		this.framerateCounter = new FramerateCounter();
@@ -71,7 +75,7 @@ export class App {
 		stateTex.magFilter = THREE.LinearFilter;
 		stateTex.needsUpdate = true;
 
-		stateTex = GpuCompute.run([stateTex],
+		stateTex = this.compute.run([stateTex],
 			`_out.r = texture().r;`, { itype:
 				//THREE.UnsignedByteType,
 				//THREE.HalfFloatType,
@@ -87,10 +91,10 @@ export class App {
 	};
 
 	private doSimulationStep(inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
-		let state : GpuCompute.TextureWrapper = ImgProc.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
-		//state = ImgProc.fastBlur(state, /*releaseFirstInputTex=*/ true);
-		state = ImgProc.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
-		state = GpuCompute.run([state?.get()], `
+		let state : GpuCompute.TextureWrapper = this.imageProcessor.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
+		//state = this.imageProcessor.fastBlur(state, /*releaseFirstInputTex=*/ true);
+		state = this.imageProcessor.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
+		state = this.compute.run([state?.get()], `
 			float f = texture().r;
 			//float fw = fwidth(f)*4.0;
 			//f = smoothstep(.5-fw, .5+fw, f);
@@ -110,7 +114,7 @@ export class App {
 
 	private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
-		let tex3d = GpuCompute.run([heightmap], `
+		let tex3d = this.compute.run([heightmap], `
 			float here = texture().r;
 			vec2 d = vec2(
 				here - texture(tc - vec2(tsize1.x, 0)).r,
@@ -142,13 +146,15 @@ export class App {
 				iformat: THREE.RGBAFormat,
 				itype: THREE.FloatType,
 				uniforms: {
-					albedo: new THREE.Uniform(albedo)
+					albedo: albedo
 				}
 			});
 		return tex3d;
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
+		let texturesToRelease : GpuCompute.TextureWrapper[] = [];
+
 		this.framerateCounter.update(now);
 		if (this.limitFramerateCheckbox.checked)
 			setTimeout(this.animate, 1000);
@@ -160,23 +166,23 @@ export class App {
 		if(!KeysHeld.global_keysHeld["digit1"]) {
 			globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 			globals.stateTex1 = this.doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
-			const stateTex0Shrunken = GpuCompute.run([globals.stateTex0, globals.stateTex1], `
+			const stateTex0Shrunken = this.compute.run([globals.stateTex0, globals.stateTex1], `
 				_out.r = max(0.0, texture(tex1).r - texture(tex2).r);
 				`,
 				{
 					releaseFirstInputTex: false
 				});
-			globals.stateTex0.willNoLongerUse();
+			this.compute.willNoLongerUse(globals.stateTex0);
 			globals.stateTex0 = stateTex0Shrunken;
 		}
 		//globals.stateTex1 = stateTex1Shrunken;
 
 		const iters = 30;// * System.getMousePos().x / window.innerWidth;
 
-		var extruded0 = ImgProc.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
-		var extruded1 = ImgProc.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
+		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
+		var extruded1 = this.imageProcessor.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
 		if(KeysHeld.global_keysHeld["digit1"]) {
-			var toDraw = GpuCompute.run([globals.stateTex0], `
+			var toDraw = this.compute.run([globals.stateTex0], `
 			float state = texture(tex1).r;
 			//state = .5 * state;
 			_out.r = state;`
@@ -184,13 +190,15 @@ export class App {
 				releaseFirstInputTex: false
 			}
 			);
-			util.drawToScreen(toDraw, false);
+			this.compute.drawToScreen(toDraw);
 			return;
 		}
 
 		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(1.5, 0.2, 0.0), { releaseFirstInputTex: true });
+		texturesToRelease.push(tex3d_0);
 		let tex3d_1 = this.make3d(extruded1, new THREE.Vector3(0.0, 0.2, 1.5), { releaseFirstInputTex: true });
-		let tex3d = GpuCompute.run([tex3d_0, tex3d_1, this.backgroundPicTex], `
+		texturesToRelease.push(tex3d_1);
+		let tex3d = this.compute.run([tex3d_0, tex3d_1, this.backgroundPicTex], `
 			vec3 col0 = texture(tex1).rgb;
 			vec3 col1 = texture(tex2).rgb;
 			if(col0.r < 0.0 && col1.r < 0.0) {
@@ -203,12 +211,13 @@ export class App {
 			`, {
 				releaseFirstInputTex: false
 			});
-		/*let tex3dThresholded = GpuCompute.run([tex3d], `
+		texturesToRelease.push(tex3d);
+		/*let tex3dThresholded = this.compute.run([tex3d], `
 			vec3 col = texture().rgb;
 			//col *= step(1.0, dot(col, vec3(1.0/3.0)));
 			_out.rgb = col;
 			`);*/
-		let tex3dToBlur = GpuCompute.run([globals.stateTex0, globals.stateTex1], `
+		let tex3dBlurState = this.compute.run([globals.stateTex0, globals.stateTex1], `
 			vec3 col0 = texture(tex1).rgb;
 			vec3 col1 = texture(tex2).rgb;
 			if(col0 == vec3(0.0) && col1 == vec3(0.0)) {
@@ -219,32 +228,24 @@ export class App {
 			`, {
 				releaseFirstInputTex: false
 			});
-		tex3d_0?.willNoLongerUse();
-		tex3d_1?.willNoLongerUse();
-		let tex3dBlur = util.cloneTex(tex3dToBlur);
-		let tex3dBlurCollected = util.cloneTex(tex3dToBlur);
-		tex3dBlurCollected = GpuCompute.run([tex3dBlurCollected], `
+		let tex3dBlurCollected = this.imageProcessor.cloneTex(tex3dBlurState);
+		tex3dBlurCollected = this.compute.run([tex3dBlurCollected], `
 			_out.rgb = vec3(0.0); // zero it out
 			`, {
 				releaseFirstInputTex: true
 			});
 		for(let i = 0; i < 3; i++) {
-			tex3dBlur = ImgProc.scale(tex3dBlur, 0.5, true);
-			tex3dBlur = ImgProc.blur(tex3dBlur, 1.0, 1.0, true);
-			tex3dBlurCollected = GpuCompute.run([tex3dBlurCollected, tex3dBlur], `
+			tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
+			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 1.0, true);
+			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `
 				_out.rgb = texture(tex1).rgb + texture(tex2).rgb;
 				`, {
 					releaseFirstInputTex: true
 				});
 		}
-		/*let tex3dBloom = GpuCompute.run([tex3d, tex3dBlurCollected], `
-			_out.rgb = texture(tex1).rgb * 1.0 + texture(tex2).rgb * 1.0;
-			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
-			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
-			`, {
-				releaseFirstInputTex: false
-			});*/
-		let tex3dShadowed = GpuCompute.run([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
+		texturesToRelease.push(tex3dBlurState);
+		texturesToRelease.push(tex3dBlurCollected);
+		let tex3dShadowed = this.compute.run([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
 			vec3 col = texture(tex1).rgb;
 			float shadow = texture(tex2).r;
 			vec3 background = texture(tex3).rgb;
@@ -260,18 +261,15 @@ export class App {
 			`, {
 				releaseFirstInputTex: false
 			});
+		texturesToRelease.push(tex3dShadowed);
 		if (KeysHeld.global_keysHeld["keyb"]) {
-			util.drawToScreen(tex3dBlurCollected, true);
+			this.compute.drawToScreen(tex3dBlurCollected);
 		}
-		//util.drawToScreen(tex3dBlurCollected, false);
-		else
-		util.drawToScreen(tex3dShadowed, false);
-
-		tex3d?.willNoLongerUse();
-		tex3dBlur?.willNoLongerUse();
-		tex3dToBlur?.willNoLongerUse();
-		tex3dBlurCollected?.willNoLongerUse();
-		tex3dShadowed?.willNoLongerUse();
+		//this.compute.drawToScreen(tex3dBlurCollected);
+		else {
+			this.compute.drawToScreen(tex3dShadowed);
+		}
+		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));
 	};
 }
 

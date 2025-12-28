@@ -6,7 +6,6 @@ import { Input } from './Input';
 import * as util from './util';
 import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
-import * as KeysHeld from './KeysHeld';
 import { PresentationForIashu } from './presentationForIashu';
 
 export class App {
@@ -17,9 +16,10 @@ export class App {
 	private limitFramerateCheckbox: HTMLInputElement;
 	private compute : GpuCompute.GpuComputeContext;
 	private imageProcessor : ImageProcessor;
+	private input : Input;
 
 	constructor() {
-		globals.input = new Input();
+		this.input = new Input();
 
 		this.compute = new GpuCompute.GpuComputeContext(util.renderer);
 		this.imageProcessor = new ImageProcessor(this.compute);
@@ -153,7 +153,7 @@ export class App {
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
-		let mousePos = globals.input.mousePos;
+		let mousePos = this.input.mousePos;
 		//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
 		if(typeof mousePos == "undefined")
 			mousePos = new THREE.Vector2(0, 0); // this is normally harmless
@@ -170,7 +170,7 @@ export class App {
 		
 		if (!this.assetsLoaded)
 			return;
-		if(!KeysHeld.global_keysHeld["digit1"]) {
+		if(!this.input.isKeyHeld("digit1")) {
 			globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 			globals.stateTex1 = this.doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
 			const stateTex0Shrunken = this.compute.run([globals.stateTex0, globals.stateTex1], `
@@ -188,7 +188,7 @@ export class App {
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		var extruded1 = this.imageProcessor.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
-		if(KeysHeld.global_keysHeld["digit1"]) {
+		if(this.input.isKeyHeld("digit1")) {
 			var toDraw = this.compute.run([globals.stateTex0], `
 			float state = texture(tex1).r;
 			//state = .5 * state;
@@ -269,7 +269,7 @@ export class App {
 				releaseFirstInputTex: false
 			});
 		texturesToRelease.push(tex3dShadowed);
-		if (KeysHeld.global_keysHeld["keyb"]) {
+		if (this.input.isKeyHeld("keyb")) {
 			this.compute.drawToScreen(tex3dBlurCollected);
 		}
 		//this.compute.drawToScreen(tex3dBlurCollected);

@@ -4,12 +4,13 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import * as util from "./util";
-import * as KeysHeld from "./KeysHeld";
 
 type RenderTargetTexture = {
 	get(): THREE.Texture;
 	getRenderTarget(): THREE.WebGLRenderTarget;
 };
+
+type KeysRegistry = { [key: string]: boolean };
 
 export class Input {
 	private scene: THREE.Scene;
@@ -19,11 +20,15 @@ export class Input {
 	private lastTouchPos: THREE.Vector2 | undefined;
 	private lastMousePos: THREE.Vector2 | undefined;
 	#mousePos : THREE.Vector2 = new THREE.Vector2(0, 0);
+	private keysHeld : KeysRegistry = {};
 
 	get mousePos() : THREE.Vector2 | undefined {
 		return this.lastMousePos;
 	}
 
+	isKeyHeld(key : string) {
+		return this.keysHeld[key];
+	}
 
 	constructor() {
 		this.scene = new THREE.Scene();
@@ -150,11 +155,11 @@ export class Input {
 
 	private onKeyDown = (e: KeyboardEvent) => {
 		const char = e.code.toLowerCase();
-		KeysHeld.global_keysHeld[char] = true;
+		this.keysHeld[char] = true;
 	};
 
 	private onKeyUp = (e: KeyboardEvent) => {
 		const char = e.code.toLowerCase();
-		KeysHeld.global_keysHeld[char] = false;
+		this.keysHeld[char] = false;
 	};
 }

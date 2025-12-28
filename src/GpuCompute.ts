@@ -30,11 +30,9 @@ export class TextureWrapper {
 	}
 	constructor(param : TextureUnion) {
 		if(param instanceof THREE.Texture) {
-			console.log("creating wrapper from Texture");
 			var asTex = param as THREE.Texture;
 			this.actualTextureObj = asTex;
 		} else if(param instanceof THREE.WebGLRenderTarget) {
-			console.log("creating wrapper from RenderTarget");
 			var asRt = param as THREE.WebGLRenderTarget;
 			this.actualTextureObj = asRt.texture;
 			this.renderTargetObj = asRt;
@@ -273,7 +271,6 @@ export class GpuComputeContext {
 	}
 
 	setGlobalUniform(name : string, value : UniformUnion) {
-		console.log(`setGlobalUniform ${value}`)
 		this.#globalUniforms.set(name, value);
 	}
 
@@ -312,7 +309,6 @@ export class GpuComputeContext {
 
 		//processedOptions.uniforms = new Map<string, UniformUnion>(processedOptions.uniforms);
 		for(const [key, value] of this.#globalUniforms) {
-			console.log(`applying global uniform ${key} -> ${value}`)
 			processedOptions.uniforms[key] = value;
 		}
 		

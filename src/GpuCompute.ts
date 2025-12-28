@@ -295,8 +295,28 @@ export class GpuComputeContext {
 		return this.compute_base(texs, fshader, options)!;
 	}
 
+	constructFullFragmentShaderSource(processedOptions : Required<ShadeOpts>, baseSource : string) {
+		var uniformsString = "";
+		Object.keys(processedOptions.uniforms).forEach(key => {
+			var value : UniformUnion = processedOptions.uniforms[key];
+			uniformsString += "uniform " + mapType(value) + " " + key + ";";
+		});
+		
+		const fullFragmentShader = uniformsString +
+			intro +
+			processedOptions.functions +
+			"	void shade() {" +
+			baseSource +
+			outro
+
+		const fullVertexShader = uniformsString +
+			vertexShader.replace("%VSHADER_EXTRA%", processedOptions.vshaderExtra)
+
+		return [fullFragmentShader, fullVertexShader];
+	}
+
 	private compute_base(texs : Array<TextureWrapper>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
-		var processedOptions = {
+		var processedOptions : Required<ShadeOpts> = {
 			releaseFirstInputTex: options.releaseFirstInputTex,
 			toScreen: options.toScreen !== undefined ? options.toScreen : false,
 			scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
@@ -306,7 +326,7 @@ export class GpuComputeContext {
 			vshaderExtra: options.vshaderExtra || "",
 			functions: options.functions || "",
 		};
-
+		
 		//processedOptions.uniforms = new Map<string, UniformUnion>(processedOptions.uniforms);
 		for(const [key, value] of this.#globalUniforms) {
 			processedOptions.uniforms[key] = value;
@@ -337,26 +357,19 @@ export class GpuComputeContext {
 			i++;
 		});
 
-		var uniformsString = "";
-		Object.keys(processedOptions.uniforms).forEach(key => {
-			var value : UniformUnion = processedOptions.uniforms[key];
-			uniformsString += "uniform " + mapType(value) + " " + key + ";";
-		});
 		
-		var params : THREE.ShaderMaterialParameters = {
-			uniforms: { }
-		};
+		const uniformMapForThreeJs: { [uniform: string]: THREE.IUniform } = {};
 		for (const [key, value] of Object.entries(processedOptions.uniforms)) {
-			params.uniforms![key] = new THREE.Uniform(value);
+			uniformMapForThreeJs[key] = new THREE.Uniform(value);
 		}
 		
-		const fshader_complete = uniformsString + intro + processedOptions.functions + "	void shade() {" + fshader + outro;
+		const [fshader_complete, vshader_complete] = this.constructFullFragmentShaderSource(processedOptions, fshader);
 		var cachedMaterial = programCache[fshader_complete];
 		var cachedMesh = meshCache[fshader_complete];
 		if(!cachedMaterial) {
 			cachedMaterial = new THREE.ShaderMaterial( {
-				uniforms: params.uniforms,
-				vertexShader: uniformsString + vertexShader.replace("%VSHADER_EXTRA%", processedOptions.vshaderExtra),
+				uniforms: uniformMapForThreeJs,
+				vertexShader: vshader_complete,
 				fragmentShader: fshader_complete,
 				side: THREE.DoubleSide,
 				blending: THREE.NoBlending
@@ -368,7 +381,7 @@ export class GpuComputeContext {
 		}
 		var material = cachedMaterial;
 		var mesh = cachedMesh;
-		for (const [key, value] of Object.entries(params.uniforms!)) { // todo: is the "!" necessary?
+		for (const [key, value] of Object.entries(uniformMapForThreeJs)) {
 			material.uniforms[key] = value;
 		}
 

@@ -19,6 +19,8 @@ export class App {
 	private imageProcessor : ImageProcessor;
 
 	constructor() {
+		globals.input = new Input();
+
 		this.compute = new GpuCompute.GpuComputeContext(util.renderer);
 		this.imageProcessor = new ImageProcessor(this.compute);
 		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
@@ -37,7 +39,6 @@ export class App {
 		));
 
 		this.onResize();
-		globals.input = new Input();
 
 		document.getElementById("loadingScreen")!.style.display = "none";
 
@@ -66,13 +67,13 @@ export class App {
 
 		img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
-		let stateTex : GpuCompute.TextureUnion = new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
-				THREE.FloatType);
+		let stateTex = new GpuCompute.TextureWrapper(new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
+				THREE.FloatType));
 				//THREE.UnsignedByteType);
-		stateTex.generateMipmaps = false;
-		stateTex.minFilter = THREE.LinearFilter;
-		stateTex.magFilter = THREE.LinearFilter;
-		stateTex.needsUpdate = true;
+		stateTex.get().generateMipmaps = false;
+		stateTex.get().minFilter = THREE.LinearFilter;
+		stateTex.get().magFilter = THREE.LinearFilter;
+		stateTex.get().needsUpdate = true;
 
 		stateTex = this.compute.run([stateTex],
 			`_out.r = texture().r;`, { itype:
@@ -93,7 +94,7 @@ export class App {
 		let state : GpuCompute.TextureWrapper = this.imageProcessor.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
 		//state = this.imageProcessor.fastBlur(state, /*releaseFirstInputTex=*/ true);
 		state = this.imageProcessor.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
-		state = this.compute.run([state?.get()], `
+		state = this.compute.run([state], `
 			float f = texture().r;
 			//float fw = fwidth(f)*4.0;
 			//f = smoothstep(.5-fw, .5+fw, f);
@@ -154,6 +155,8 @@ export class App {
 	private animate = (now: DOMHighResTimeStamp) => {
 		let mousePos = globals.input.mousePos;
 		//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
+		if(typeof mousePos == "undefined")
+			mousePos = new THREE.Vector2(0, 0); // this is normally harmless
 		this.compute.setGlobalUniform("mouse", mousePos);
 		this.compute.setGlobalUniform("time", 0.0); // todo
 		

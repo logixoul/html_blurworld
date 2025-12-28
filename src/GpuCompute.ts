@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget | TextureWrapper);
+export type TextureUnion = (THREE.Texture | THREE.WebGLRenderTarget);
 
 export class TextureWrapper {
 	private readonly actualTextureObj: THREE.Texture;
@@ -30,16 +30,14 @@ export class TextureWrapper {
 	}
 	constructor(param : TextureUnion) {
 		if(param instanceof THREE.Texture) {
+			console.log("creating wrapper from Texture");
 			var asTex = param as THREE.Texture;
 			this.actualTextureObj = asTex;
 		} else if(param instanceof THREE.WebGLRenderTarget) {
+			console.log("creating wrapper from RenderTarget");
 			var asRt = param as THREE.WebGLRenderTarget;
 			this.actualTextureObj = asRt.texture;
 			this.renderTargetObj = asRt;
-		} else if(param instanceof TextureWrapper) {
-			var asTextureWrapper = param as TextureWrapper;
-			this.actualTextureObj = asTextureWrapper.actualTextureObj;
-			this.renderTargetObj = asTextureWrapper.renderTargetObj;
 		} else {
 			throw new Error("TextureWrapper: invalid parameter");
 		}
@@ -56,6 +54,15 @@ export class TextureWrapper {
 	}
 }
 
+function isThreeJsTexture(value: unknown): value is THREE.Texture {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'isTexture' in value &&
+    (value as any).isTexture === true
+  );
+}
+
 function mapType(value: any) {
 	if(value instanceof THREE.Vector3)
 		return 'vec3';
@@ -63,10 +70,10 @@ function mapType(value: any) {
 		return 'vec2';
 	else if(typeof value === "number")
 		return 'float';
-	else if(value.isTexture) {
+	else if(isThreeJsTexture(value)) {
 		return 'sampler2D';
 	}
-	else throw "error";
+	else throw new Error("Unimplemented uniform type");
 }
 
 // GPT generated this functions. todo: is it needed?
@@ -74,12 +81,6 @@ function getTextureSize(tex: THREE.Texture): THREE.Vector2 {
 	// THREE.Texture.image is typed as unknown in @types/three.
 	const image = tex.image as { width: number; height: number };
 	return new THREE.Vector2(image.width, image.height);
-}
-
-function unpackTex(t : any) {
-	if(t.isWebGLRenderTarget)
-		return t.texture;
-	else return t;
 }
 
 const vertexShader : string = `
@@ -272,6 +273,7 @@ export class GpuComputeContext {
 	}
 
 	setGlobalUniform(name : string, value : UniformUnion) {
+		console.log(`setGlobalUniform ${value}`)
 		this.#globalUniforms.set(name, value);
 	}
 
@@ -288,44 +290,43 @@ export class GpuComputeContext {
 			});
 	}
 
-	runStraightToScreen(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : void {
+	runStraightToScreen(texs : Array<TextureWrapper>, fshader : string, options : ShadeOpts) : void {
 		this.compute_base(texs, fshader, { ...options, toScreen: true });
 	}
 
-	run(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper {
+	run(texs : Array<TextureWrapper>, fshader : string, options : ShadeOpts) : TextureWrapper {
 		return this.compute_base(texs, fshader, options)!;
 	}
 
-	private compute_base(texs : Array<TextureUnion>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
-		const wrappedTexs = texs.map(t => new TextureWrapper(t));
-
+	private compute_base(texs : Array<TextureWrapper>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
 		var processedOptions = {
 			releaseFirstInputTex: options.releaseFirstInputTex,
 			toScreen: options.toScreen !== undefined ? options.toScreen : false,
 			scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
-			itype: options.itype !== undefined ? options.itype : wrappedTexs[0].get().type,
-			iformat: options.iformat !== undefined ? options.iformat : wrappedTexs[0].get().format as THREE.PixelFormat,
+			itype: options.itype !== undefined ? options.itype : texs[0].get().type,
+			iformat: options.iformat !== undefined ? options.iformat : texs[0].get().format as THREE.PixelFormat,
 			uniforms: options.uniforms || { },
 			vshaderExtra: options.vshaderExtra || "",
-			lib: options.functions || "",
+			functions: options.functions || "",
 		};
 
 		//processedOptions.uniforms = new Map<string, UniformUnion>(processedOptions.uniforms);
-		for(const [key, value] of this.#globalUniforms)
+		for(const [key, value] of this.#globalUniforms) {
+			console.log(`applying global uniform ${key} -> ${value}`)
 			processedOptions.uniforms[key] = value;
+		}
 		
 		var renderTarget;
 		if(options.toScreen) {
 			renderTarget = null;
 		} else {
-			var size = new THREE.Vector2(wrappedTexs[0].width, wrappedTexs[0].height);
+			var size = new THREE.Vector2(texs[0].width, texs[0].height);
 			size = size.multiply(processedOptions.scale);
 			size.x = Math.floor(size.x);
 			size.y = Math.floor(size.y);
 			
 			const key = new TexturePoolKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
 			renderTarget = this.texturePool.get(key);
-			//renderTarget.texture.generateMipmaps = util.unpackTex(texs[0]).generateMipmaps;
 		}
 
 
@@ -333,7 +334,7 @@ export class GpuComputeContext {
 		texs.forEach(tex => {
 			const name = "tex" + (i+1);
 			const tsizeName = "tsize" + (i+1);
-			var texture : TextureWrapper = wrappedTexs[i];
+			var texture : TextureWrapper = texs[i];
 			processedOptions.uniforms[name] = texture.get();
 			const texSize = getTextureSize(texture.get());
 			processedOptions.uniforms[tsizeName] = new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height);
@@ -341,7 +342,7 @@ export class GpuComputeContext {
 		});
 
 		var uniformsString = "";
-		Object.keys(processedOptions.uniforms).forEach(key => { // todo: do i need the '!'?
+		Object.keys(processedOptions.uniforms).forEach(key => {
 			var value : UniformUnion = processedOptions.uniforms[key];
 			uniformsString += "uniform " + mapType(value) + " " + key + ";";
 		});
@@ -353,7 +354,7 @@ export class GpuComputeContext {
 			params.uniforms![key] = new THREE.Uniform(value);
 		}
 		
-		const fshader_complete = uniformsString + intro + processedOptions.lib + "	void shade() {" + fshader + outro;
+		const fshader_complete = uniformsString + intro + processedOptions.functions + "	void shade() {" + fshader + outro;
 		var cachedMaterial = programCache[fshader_complete];
 		var cachedMesh = meshCache[fshader_complete];
 		if(!cachedMaterial) {
@@ -385,10 +386,10 @@ export class GpuComputeContext {
 		scene.remove( mesh );
 
 		if(processedOptions.releaseFirstInputTex) {
-			this.willNoLongerUse(wrappedTexs[0]);
+			this.willNoLongerUse(texs[0]);
 		}
 		if(renderTarget === null)
 			return null;
-		return new TextureWrapper(renderTarget);
+		return renderTarget;
 	}
 }

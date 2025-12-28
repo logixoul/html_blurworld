@@ -20,8 +20,8 @@ export class Input {
 	private lastMousePos: THREE.Vector2 | undefined;
 	#mousePos : THREE.Vector2 = new THREE.Vector2(0, 0);
 
-	get mousePos() : THREE.Vector2 {
-		return this.lastMousePos!;
+	get mousePos() : THREE.Vector2 | undefined {
+		return this.lastMousePos;
 	}
 
 

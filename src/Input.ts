@@ -3,7 +3,6 @@ import * as THREE from "three";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
-import * as util from "./util";
 
 type RenderTargetTexture = {
 	get(): THREE.Texture;
@@ -13,6 +12,7 @@ type RenderTargetTexture = {
 type KeysRegistry = { [key: string]: boolean };
 
 export class Input {
+	private renderer : THREE.WebGLRenderer;
 	private scene: THREE.Scene;
 	private lineGeometry: LineSegmentsGeometry;
 	private paintMaterial: LineMaterial;
@@ -30,7 +30,8 @@ export class Input {
 		return this.keysHeld[key];
 	}
 
-	constructor() {
+	constructor(renderer : THREE.WebGLRenderer) {
+		this.renderer = renderer;
 		this.scene = new THREE.Scene();
 		this.lineGeometry = new LineSegmentsGeometry();
 		this.lineGeometry.setPositions([0, 0, 0, 0, 0, 0]);
@@ -72,11 +73,11 @@ export class Input {
 		this.lineGeometry.setPositions([p1.x, p1.y, 0, p2.x, p2.y, 0]);
 		this.lineSegments.computeLineDistances();
 
-		util.renderer.setRenderTarget(tex.getRenderTarget());
-		util.renderer.autoClear = false;
-		util.renderer.render(this.scene, camera);
-		util.renderer.autoClear = true;
-		util.renderer.setRenderTarget(null);
+		this.renderer.setRenderTarget(tex.getRenderTarget());
+		this.renderer.autoClear = false;
+		this.renderer.render(this.scene, camera);
+		this.renderer.autoClear = true;
+		this.renderer.setRenderTarget(null);
 	}
 
 	private unproject(x: number, y: number, tex: THREE.Texture) {

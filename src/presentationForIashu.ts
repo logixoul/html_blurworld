@@ -2,14 +2,15 @@ import * as THREE from 'three';
 import { globals } from './Globals';
 import * as GpuCompute from './GpuCompute';
 import * as ImgProc from './ImageProcessor';
-import * as util from './util';
 
 export class PresentationForIashu {
 	private readonly compute : GpuCompute.GpuComputeContext;
 	private readonly imageProcessor : ImgProc.ImageProcessor;
-	constructor(compute : GpuCompute.GpuComputeContext) {
+	private readonly renderer : THREE.WebGLRenderer;
+	constructor(renderer : THREE.WebGLRenderer, compute : GpuCompute.GpuComputeContext) {
 		this.compute = compute;
 		this.imageProcessor = new ImgProc.ImageProcessor(compute);
+		this.renderer = renderer;
 		document.addEventListener("keydown", e => {
 			console.log("keydown!!!");
 			const char : string = e.code.toLowerCase();
@@ -46,7 +47,7 @@ export class PresentationForIashu {
 		this.compute.drawToScreen(tex);
 		tex.magFilter = oldMagFilter;
 
-		var dataURL = util.renderer.domElement.toDataURL();
+		var dataURL = this.renderer.domElement.toDataURL();
 		var img = new Image();
 		img.src = dataURL;
 		document.body.appendChild(img);

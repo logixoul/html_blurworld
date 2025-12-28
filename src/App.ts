@@ -3,7 +3,6 @@ import * as GpuCompute from './GpuCompute';
 import { ImageProcessor } from './ImageProcessor';
 import { globals } from './Globals.js';
 import { Input } from './Input';
-import * as util from './util';
 import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import { PresentationForIashu } from './presentationForIashu';
@@ -17,11 +16,15 @@ export class App {
 	private compute : GpuCompute.GpuComputeContext;
 	private imageProcessor : ImageProcessor;
 	private input : Input;
+	#renderer : THREE.WebGLRenderer;
 
 	constructor() {
-		this.input = new Input();
+		this.#renderer = new THREE.WebGLRenderer();
+		document.body.appendChild( this.#renderer.domElement );
 
-		this.compute = new GpuCompute.GpuComputeContext(util.renderer);
+		this.input = new Input(this.#renderer);
+
+		this.compute = new GpuCompute.GpuComputeContext(this.#renderer);
 		this.imageProcessor = new ImageProcessor(this.compute);
 		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
 			'assets/milkyway.png',
@@ -45,7 +48,7 @@ export class App {
 		if (window.location.hostname !== "localhost") {
 			document.getElementById("framerate")!.style.display = "none";
 		}
-		new PresentationForIashu(this.compute);
+		new PresentationForIashu(this.#renderer, this.compute);
 
 		document.defaultView!.addEventListener("resize", this.onResize);
 		this.framerateCounter = new FramerateCounter();
@@ -87,7 +90,7 @@ export class App {
 	private onResize = () => {
 		globals.stateTex0 = this.createStateTex();
 		globals.stateTex1 = this.createStateTex();
-		util.renderer.setSize( window.innerWidth, window.innerHeight );
+		this.#renderer.setSize( window.innerWidth, window.innerHeight );
 	};
 
 	private doSimulationStep(inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
@@ -158,7 +161,6 @@ export class App {
 		if(typeof mousePos == "undefined")
 			mousePos = new THREE.Vector2(0, 0); // this is normally harmless
 		this.compute.setGlobalUniform("mouse", mousePos);
-		this.compute.setGlobalUniform("time", 0.0); // todo
 		
 		let texturesToRelease : GpuCompute.TextureWrapper[] = [];
 

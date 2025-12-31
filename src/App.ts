@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
+import { RGBE, RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import * as GpuCompute from './GpuCompute';
 import { ImageProcessor } from './ImageProcessor';
 import { globals } from './Globals.js';
@@ -17,6 +19,7 @@ export class App {
 	private imageProcessor : ImageProcessor;
 	private input : Input;
 	#renderer : THREE.WebGLRenderer;
+	private windowEquirectangularEnvmap! : THREE.Texture;
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -37,7 +40,17 @@ export class App {
 					releaseFirstInputTex: false, // todo: fix memory leak
 					itype: THREE.FloatType
 				});
-				this.assetsLoaded = true;
+
+				new RGBELoader().load( 'assets/Untitled.hdr', ( texture ) =>{
+					texture.generateMipmaps = true;
+					texture.magFilter = THREE.NearestFilter;
+					texture.minFilter = THREE.NearestFilter;
+					texture.needsUpdate = true;
+					//texture.mapping = THREE.EquirectangularReflectionMapping;
+
+					this.windowEquirectangularEnvmap = texture;
+					this.assetsLoaded = true;
+				});
 			}
 		));
 
@@ -96,7 +109,8 @@ export class App {
 	private doSimulationStep(inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
 		let state : GpuCompute.TextureWrapper = this.imageProcessor.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
 		//state = this.imageProcessor.fastBlur(state, /*releaseFirstInputTex=*/ true);
-		state = this.imageProcessor.blur(state, 0.15, 1.0, /*releaseFirstInputTex=*/ true);
+		for(let i=0;i<10;i++) {
+			state = this.imageProcessor.blur(state, .15, 1.0, /*releaseFirstInputTex=*/ true);
 		state = this.compute.run([state], `
 			float f = texture().r;
 			//float fw = fwidth(f)*4.0;
@@ -112,6 +126,7 @@ export class App {
 				}
 				`
 			});
+		}
 		return state;
 	}
 
@@ -123,24 +138,31 @@ export class App {
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
 				);
+			vec2 dOrig = d * 100.0;
 			d *= 102.0f;
 			d.x *= -1.0f * .10;
 			
 			//_out.rgb = texture(tex2).rgb;//vec3(0,.2,.5);
 			const vec2 specThres = vec2(-0.02);
-			vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.5);
+			//vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.3);
 			vec2 fw = fwidth(d);
 			
-			specular *= vec2(1.0)-smoothstep(specThres - fw/2.0, specThres + fw/2.0, d);
-			vec3 specularRgb = vec3(specular.y);
+			//specular *= vec2(1.0)-smoothstep(specThres - fw/2.0, specThres + fw/2.0, d);
+			vec3 normal = normalize(vec3(dOrig.x, dOrig.y, 1.0));
+			vec3 viewDir = vec3(0.0, 0.0, 1.0);
+			vec3 refl = reflect(-viewDir, normal);
+			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
+			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+			float fresnelWeight = mix(0.01, 1.0, fresnel);
+			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
 			if(here > 0.0)
-				_out.rgb = albedo.rgb*4.0;
+				_out.rgb = here+here*albedo.rgb*8.0;
 			else
 				_out.rgb = vec3(-1.0); // sentinel value for "no data"
 			
+			//if(d.y>0.0f)_out.rgb /= 1.0+d.y*10.0; // shadows
 			_out.rgb += specularRgb; // specular
-			if(d.y>0.0f)_out.rgb /= 1.0+d.y*10.0; // shadows
 
 			//_out.rgb /= _out.rgb + 1.0f;
 			//
@@ -148,8 +170,12 @@ export class App {
 				releaseFirstInputTex: options.releaseFirstInputTex !== undefined ? options.releaseFirstInputTex : false,
 				iformat: THREE.RGBAFormat,
 				itype: THREE.FloatType,
+				functions: `
+				const float PI = 3.14159265358979323846;
+				`,
 				uniforms: {
-					albedo: albedo
+					albedo: albedo,
+					envmap: this.windowEquirectangularEnvmap
 				}
 			});
 		return tex3d;

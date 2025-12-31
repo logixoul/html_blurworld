@@ -142,6 +142,7 @@ export class ImageProcessor {
 		const blurSize = (window as { blurSize?: number }).blurSize || 1.0;
 		// extra blurs to make sure edges are smooth
 		state = this.blur(state, blurSize, 1.0/scaleArg, true);
+		state = this.blur(state, blurSize, 1.0, true);
 		//state = fastBlur(state, true);
 		
 		// make edges sharp again

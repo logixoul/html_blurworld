@@ -151,7 +151,7 @@ export class ImageProcessor {
 			float fw = fwidth(f);
 			f = smoothstep(.5-fw, .5+fw, f);
 			f = texture().r * f;
-			_out.r = f;
+			_out.r = pow(f,3.0);
 			`, {
 				releaseFirstInputTex: true
 			});

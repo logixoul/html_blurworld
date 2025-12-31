@@ -212,7 +212,7 @@ export class App {
 		}
 		//globals.stateTex1 = stateTex1Shrunken;
 
-		const iters = 30;// * globals.input.mousePos.x / window.innerWidth;
+		const iters = 10;// * globals.input.mousePos.x / window.innerWidth;
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		var extruded1 = this.imageProcessor.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
@@ -288,7 +288,7 @@ export class App {
 				col = background; // use background where no data
 				//col /= 1.0 + pow(shadow, 4.0);
 			} else {
-				//col += background * 0.02;
+				col += background * 0.2;
 			}
 			_out.rgb = col;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping

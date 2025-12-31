@@ -162,18 +162,13 @@ export class App {
 			float fresnelWeight = mix(0.04, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
-			if(here > 0.0) {
-				float eta = 1.0 / 1.33; // air -> water-ish
-				vec3 refracted = refract(viewDir, normal, eta);
-				float z = max(abs(refracted.z), 1e-3);
-				vec2 refractOffset = refracted.xy / z;
-				_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.1).rgb;
-				//_out.rgb = pow(here,2.0)*albedo.rgb*8.0;
-			}
-			else
-				_out.rgb = vec3(-1.0); // sentinel value for "no data"
+			float eta = 1.0 / 1.33; // air -> water-ish
+			vec3 refracted = refract(viewDir, normal, eta);
+			float z = max(abs(refracted.z), 1e-3);
+			vec2 refractOffset = refracted.xy / z;
+			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.05).rgb;// * pow(albedo, vec3(here));
+			//_out.rgb = pow(here,2.0)*albedo.rgb*8.0;
 			
-			//if(d.y>0.0f)_out.rgb /= 1.0+d.y*10.0; // shadows
 			_out.rgb += specularRgb * .3; // specular
 
 			//_out.rgb /= _out.rgb + 1.0f;
@@ -223,28 +218,15 @@ export class App {
 		
 		if (!this.assetsLoaded)
 			return;
-		if(!this.input.isKeyHeld("digit1")) {
-			globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
-			globals.stateTex1 = this.doSimulationStep(globals.stateTex1, /*releaseFirstInputTex=*/ true);
-			const stateTex0Shrunken = this.compute.run([globals.stateTex0, globals.stateTex1], `
-				_out.r = max(0.0, texture(tex1).r - texture(tex2).r);
-				`,
-				{
-					releaseFirstInputTex: false
-				});
-			this.compute.willNoLongerUse(globals.stateTex0);
-			globals.stateTex0 = stateTex0Shrunken;
-		}
+		globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 		//globals.stateTex1 = stateTex1Shrunken;
 
 		const iters = 30;// * globals.input.mousePos.x / window.innerWidth;
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
-		var extruded1 = this.imageProcessor.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
 		if(this.input.isKeyHeld("digit1")) {
 			var toDraw = this.compute.run([globals.stateTex0], `
 			float state = texture(tex1).r;
-			//state = .5 * state;
 			_out.r = state;`
 			, {
 				releaseFirstInputTex: false
@@ -254,40 +236,10 @@ export class App {
 			return;
 		}
 
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(1.5, 0.3, 0.1), { releaseFirstInputTex: true });
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.3, 0.03, 0.01), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
-		let tex3d_1 = this.make3d(extruded1, new THREE.Vector3(0.1, 0.3, 1.5), { releaseFirstInputTex: true });
-		texturesToRelease.push(tex3d_1);
-		let tex3d = this.compute.run([tex3d_0, tex3d_1, this.backgroundPicTex], `
-			vec3 col0 = texture(tex1).rgb;
-			vec3 col1 = texture(tex2).rgb;
-			if(col0.r < 0.0 && col1.r < 0.0) {
-				_out.rgb = vec3(-1.0); // use sentinel value for "no data"
-				return;
-			}
-			col0 = max(col0, vec3(0.0));
-			col1 = max(col1, vec3(0.0));
-			_out.rgb = col0 + col1;
-			`, {
-				releaseFirstInputTex: false
-			});
-		texturesToRelease.push(tex3d);
-		/*let tex3dThresholded = this.compute.run([tex3d], `
-			vec3 col = texture().rgb;
-			//col *= step(1.0, dot(col, vec3(1.0/3.0)));
-			_out.rgb = col;
-			`);*/
-		let tex3dBlurState = this.compute.run([globals.stateTex0, globals.stateTex1], `
-			vec3 col0 = texture(tex1).rgb;
-			vec3 col1 = texture(tex2).rgb;
-			if(col0 == vec3(0.0) && col1 == vec3(0.0)) {
-				_out.rgb = vec3(0.0); // use black where no data
-			} else {
-				_out.rgb = vec3(1.0);
-			}
-			`, {
-				releaseFirstInputTex: false
-			});
+		let tex3d = tex3d_0;
+		let tex3dBlurState = this.imageProcessor.cloneTex(tex3d);
 		let tex3dBlurCollected = this.imageProcessor.cloneTex(tex3dBlurState);
 		tex3dBlurCollected = this.compute.run([tex3dBlurCollected], `
 			_out.rgb = vec3(0.0); // zero it out
@@ -308,14 +260,14 @@ export class App {
 		let tex3dShadowed = this.compute.run([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
 			vec3 col = texture(tex1).rgb;
 			float shadow = texture(tex2).r;
+			vec3 bloom = texture(tex2).rgb;
 			vec3 background = texture(tex3).rgb;
 			if(col.r < 0.0) {
 				col = background; // use background where no data
 				//col /= 1.0 + pow(shadow, 4.0);
 			} else {
-				//col += background * 0.2;
 			}
-			_out.rgb = col;
+			_out.rgb = col + bloom;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {

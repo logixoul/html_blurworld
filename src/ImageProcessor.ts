@@ -120,7 +120,7 @@ export class ImageProcessor {
 	scale(inTex: TextureWrapper, scale: number, releaseFirstInputTex: boolean): TextureWrapper {
 		// upscale
 		const state = this.compute.run([inTex], `
-			_out.r = texture().r;
+			_out.rgb = texture().rgb;
 			`, {
 				scale: new THREE.Vector2(scale, scale),
 				releaseFirstInputTex: releaseFirstInputTex

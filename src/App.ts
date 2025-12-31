@@ -151,18 +151,30 @@ export class App {
 			vec3 normal = normalize(vec3(dOrig.x, dOrig.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec3 refl = reflect(-viewDir, normal);
+			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
+			vec2 mouseUv = vec2(0.52,0.015);//mouse;
+			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
+			float pitch = (0.5 - mouseUv.y) * PI;
+			refl = rotateY(refl, yaw);
+			refl = rotateX(refl, pitch);
 			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.01, 1.0, fresnel);
+			float fresnelWeight = mix(0.04, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
-			if(here > 0.0)
-				_out.rgb = here+here*albedo.rgb*8.0;
+			if(here > 0.0) {
+				float eta = 1.0 / 1.33; // air -> water-ish
+				vec3 refracted = refract(viewDir, normal, eta);
+				float z = max(abs(refracted.z), 1e-3);
+				vec2 refractOffset = refracted.xy / z;
+				_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.1).rgb;
+				//_out.rgb = pow(here,2.0)*albedo.rgb*8.0;
+			}
 			else
 				_out.rgb = vec3(-1.0); // sentinel value for "no data"
 			
 			//if(d.y>0.0f)_out.rgb /= 1.0+d.y*10.0; // shadows
-			_out.rgb += specularRgb; // specular
+			_out.rgb += specularRgb * .3; // specular
 
 			//_out.rgb /= _out.rgb + 1.0f;
 			//
@@ -172,10 +184,21 @@ export class App {
 				itype: THREE.FloatType,
 				functions: `
 				const float PI = 3.14159265358979323846;
+				vec3 rotateY(vec3 v, float a) {
+					float s = sin(a);
+					float c = cos(a);
+					return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z);
+				}
+				vec3 rotateX(vec3 v, float a) {
+					float s = sin(a);
+					float c = cos(a);
+					return vec3(v.x, c * v.y - s * v.z, s * v.y + c * v.z);
+				}
 				`,
 				uniforms: {
 					albedo: albedo,
-					envmap: this.windowEquirectangularEnvmap
+					envmap: this.windowEquirectangularEnvmap,
+					backgroundPicTex: this.backgroundPicTex.get()
 				}
 			});
 		return tex3d;
@@ -183,9 +206,11 @@ export class App {
 
 	private animate = (now: DOMHighResTimeStamp) => {
 		let mousePos = this.input.mousePos;
-		//mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
 		if(typeof mousePos == "undefined")
 			mousePos = new THREE.Vector2(0, 0); // this is normally harmless
+		mousePos = mousePos.clone();
+		mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
+		console.log("mousePos=", mousePos)
 		this.compute.setGlobalUniform("mouse", mousePos);
 		
 		let texturesToRelease : GpuCompute.TextureWrapper[] = [];
@@ -212,7 +237,7 @@ export class App {
 		}
 		//globals.stateTex1 = stateTex1Shrunken;
 
-		const iters = 10;// * globals.input.mousePos.x / window.innerWidth;
+		const iters = 30;// * globals.input.mousePos.x / window.innerWidth;
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		var extruded1 = this.imageProcessor.extrude(globals.stateTex1, iters,globals.scale, /*releaseFirstInputTex=*/ false);
@@ -229,9 +254,9 @@ export class App {
 			return;
 		}
 
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(1.5, 0.2, 0.0), { releaseFirstInputTex: true });
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(1.5, 0.3, 0.1), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
-		let tex3d_1 = this.make3d(extruded1, new THREE.Vector3(0.0, 0.2, 1.5), { releaseFirstInputTex: true });
+		let tex3d_1 = this.make3d(extruded1, new THREE.Vector3(0.1, 0.3, 1.5), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_1);
 		let tex3d = this.compute.run([tex3d_0, tex3d_1, this.backgroundPicTex], `
 			vec3 col0 = texture(tex1).rgb;
@@ -288,7 +313,7 @@ export class App {
 				col = background; // use background where no data
 				//col /= 1.0 + pow(shadow, 4.0);
 			} else {
-				col += background * 0.2;
+				//col += background * 0.2;
 			}
 			_out.rgb = col;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping

@@ -31,7 +31,7 @@ export class App {
 		this.setGlobalUniforms();
 		this.imageProcessor = new ImageProcessor(this.compute);
 		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
-			'assets/milkyway.png',
+			`${import.meta.env.BASE_URL}assets/milkyway.png`,
 			() => {
 				this.backgroundPicTex = this.compute.run([this.backgroundPicTexOrig], `
 				_out.rgb = texture().rgb;
@@ -42,7 +42,7 @@ export class App {
 					itype: THREE.FloatType,
 					mipmaps: true
 				});
-				new RGBELoader().load( 'assets/Untitled.hdr', ( texture ) =>{
+				new RGBELoader().load( `${import.meta.env.BASE_URL}assets/Untitled.hdr`, ( texture ) =>{
 					texture.minFilter = texture.magFilter = THREE.NearestFilter;
 					texture.generateMipmaps = false;
 					//texture.magFilter = THREE.LinearFilter;

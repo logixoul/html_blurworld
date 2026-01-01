@@ -75,7 +75,8 @@ export class App {
 	private createStateTex() {
 		const documentW = window.innerWidth;
 		const documentH = window.innerHeight;
-		globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
+		globals.scale = 0.12;
+		console.log("scale=", globals.scale);
 		//globals.scale = 0.5;
 		
 		const img = new Image<Float32Array>(

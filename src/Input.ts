@@ -45,9 +45,9 @@ export class Input {
 
 		document.addEventListener("mousedown", this.onMouseDown);
 		document.addEventListener("mousemove", this.onMouseMove);
-		document.addEventListener("touchstart", this.onTouchStart);
-		document.addEventListener("touchend", this.onTouchEnd);
-		document.addEventListener("touchmove", this.onTouchMove);
+		document.addEventListener("touchstart", this.onTouchStart, {passive: false});
+		document.addEventListener("touchend", this.onTouchEnd, {passive: false});
+		document.addEventListener("touchmove", this.onTouchMove, {passive: false});
 		document.addEventListener("keydown", this.onKeyDown);
 		document.addEventListener("keyup", this.onKeyUp);
 		document.body.addEventListener("contextmenu", this.onContextMenu);
@@ -124,14 +124,17 @@ export class Input {
 	};
 
 	private onTouchStart = (_e: TouchEvent) => {
+		_e.preventDefault();
 		document.getElementById("intro")!.style.display = "none";
 	};
 
 	private onTouchEnd = (_e: TouchEvent) => {
+		_e.preventDefault();
 		this.lastTouchPos = undefined;
 	};
 
 	private onTouchMove = (e: TouchEvent) => {
+		e.preventDefault();
 		const t = e.changedTouches[0];
 		if (!t) {
 			return;

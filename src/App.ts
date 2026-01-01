@@ -28,6 +28,7 @@ export class App {
 		this.input = new Input(this.#renderer);
 
 		this.compute = new GpuCompute.GpuComputeContext(this.#renderer);
+		this.setGlobalUniforms();
 		this.imageProcessor = new ImageProcessor(this.compute);
 		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
 			'assets/milkyway.png',
@@ -103,7 +104,7 @@ export class App {
 
 	private onResize = () => {
 		globals.stateTex0 = this.createStateTex();
-		globals.stateTex1 = this.createStateTex();
+		//globals.stateTex1 = this.createStateTex();
 		this.#renderer.setSize( window.innerWidth, window.innerHeight );
 	};
 
@@ -205,7 +206,7 @@ export class App {
 		return tex3d;
 	}
 
-	private animate = (now: DOMHighResTimeStamp) => {
+	private setGlobalUniforms() {
 		let mousePos = this.input.mousePos;
 		if(typeof mousePos == "undefined")
 			mousePos = new THREE.Vector2(0, 0); // this is normally harmless
@@ -213,6 +214,10 @@ export class App {
 		mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
 		//console.log("mousePos=", mousePos)
 		this.compute.setGlobalUniform("mouse", mousePos);
+	}
+
+	private animate = (now: DOMHighResTimeStamp) => {
+		this.setGlobalUniforms();
 		
 		let texturesToRelease : GpuCompute.TextureWrapper[] = [];
 
@@ -234,7 +239,7 @@ export class App {
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
-		extruded0 = this.imageProcessor.mul(extruded0, .5, true);
+		extruded0 = this.imageProcessor.mul(extruded0, .25, true);
 		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;

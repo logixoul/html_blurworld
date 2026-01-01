@@ -1,6 +1,5 @@
 export class Globals {
 	stateTex0;
-	stateTex1;
 	scale; // number
 };
 

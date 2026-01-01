@@ -95,7 +95,7 @@ export class ImageProcessor {
 		stateLocal = this.compute.run([stateLocal, blurred], `
 			float state = texture(tex1).r;
 			float blurred = texture(tex2).r;
-			state = mix(blurred, state, 1.0-i);
+			state = mix(blurred, state, i);
 			_out.r = state;`
 			, {
 				releaseFirstInputTex: true,

@@ -159,7 +159,7 @@ export class App {
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.2).rgb;// * pow(albedo, vec3(here));
+			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.1).rgb;// * pow(albedo, vec3(here));
 			
 			_out.rgb += specularRgb; // specular
 			`, {
@@ -216,17 +216,6 @@ export class App {
 		}
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
-		if(this.input.isKeyHeld("digit1")) {
-			var toDraw = this.compute.run([globals.stateTex0], `
-			float state = texture(tex1).r;
-			_out.r = state;`
-			, {
-				releaseFirstInputTex: false
-			}
-			);
-			this.compute.drawToScreen(toDraw);
-			return;
-		}
 
 		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.3, 0.03, 0.01), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
@@ -269,9 +258,16 @@ export class App {
 		texturesToRelease.push(tex3dShadowed);
 		if (this.input.isKeyHeld("keyb")) {
 			this.compute.drawToScreen(tex3dBlurCollected);
-		}
-		//this.compute.drawToScreen(tex3dBlurCollected);
-		else {
+		} else if (this.input.isKeyHeld("digit1")) {
+			var toDraw = this.compute.run([extruded0], `
+				float state = texture(tex1).r;
+				_out.r = state;`
+				, {
+					releaseFirstInputTex: false
+				}
+			);
+			this.compute.drawToScreen(toDraw);
+		} else {
 			this.compute.drawToScreen(tex3dShadowed);
 		}
 		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));

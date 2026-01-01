@@ -42,10 +42,11 @@ export class App {
 					mipmaps: true
 				});
 				new RGBELoader().load( 'assets/Untitled.hdr', ( texture ) =>{
-					texture.generateMipmaps = true;
-					texture.magFilter = THREE.LinearFilter;
-					texture.minFilter = THREE.LinearMipmapLinearFilter;
-					texture.needsUpdate = true;
+					texture.minFilter = texture.magFilter = THREE.NearestFilter;
+					texture.generateMipmaps = false;
+					//texture.magFilter = THREE.LinearFilter;
+					//texture.minFilter = THREE.LinearMipmapLinearFilter;
+					//texture.needsUpdate = true;
 					//texture.mapping = THREE.EquirectangularReflectionMapping;
 
 					this.windowEquirectangularEnvmap = texture;
@@ -149,14 +150,14 @@ export class App {
 			refl = rotateX(refl, pitch);
 			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.01, 1.0, fresnel);
+			float fresnelWeight = mix(0.04, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
 			float eta = 1.0 / 1.33; // air -> water-ish
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			vec2 refractUv = tc + refractOffset * 10.1;
+			vec2 refractUv = tc + refractOffset * 30.1;
 			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
 			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));
@@ -232,8 +233,9 @@ export class App {
 		}
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
-
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.5, 0.3, 0.04), { releaseFirstInputTex: true });
+		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
+		extruded0 = this.imageProcessor.mul(extruded0, .5, true);
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `

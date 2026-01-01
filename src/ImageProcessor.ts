@@ -41,6 +41,29 @@ export class ImageProcessor {
 		);
 	}
 
+	// strength is in [0, 1]
+	fastBlurWithStrength(tex: TextureWrapper, releaseFirstInputTex: boolean, strength: number): TextureWrapper {
+		return this.compute.run([tex], `
+			float sum = float(0.0);
+			float here = texture(tex1, tc + tsize1 * vec2(.5, .5)).r;
+			sum += here;
+			sum += texture().r;
+			sum += texture(tex1, tc + tsize1 * vec2(1, 0)).r;
+			sum += texture(tex1, tc + tsize1 * vec2(0, 1)).r;
+			sum += texture(tex1, tc + tsize1 * vec2(1, 1)).r;
+
+			_out.r = mix(here, sum / 5.0f, strength);
+			`
+			, {
+				releaseFirstInputTex: releaseFirstInputTex,
+				vshaderExtra: `tc -= tsize1 / 2.0;`,
+				uniforms: {
+					strength: strength
+				}
+			}
+		);
+	}
+
 	blur(tex: TextureWrapper, width: number = 0.45, scaleArg: number, releaseFirstInputTex: boolean): TextureWrapper {
 		let tex2 = this.compute.run([tex], `
 			float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
@@ -86,27 +109,10 @@ export class ImageProcessor {
 	}
 
 	extrude_oneIteration(state: TextureWrapper, inTex: TextureWrapper, releaseFirstInputTex: boolean, i : number): TextureWrapper {
-		let stateLocal = this.cloneTex(state);
-		if(releaseFirstInputTex) {
-			this.compute.willNoLongerUse(state);
-		}
-		let blurred = this.blur(stateLocal, 1.0, 1.0, false);
-		
-		stateLocal = this.compute.run([stateLocal, blurred], `
-			float state = texture(tex1).r;
-			float blurred = texture(tex2).r;
-			state = mix(blurred, state, i);
-			_out.r = state;`
-			, {
-				releaseFirstInputTex: true,
-				uniforms: {
-					i: i
-				}
-			}
-			);
-		this.compute.willNoLongerUse(blurred);
+		//let blurred = this.blur(stateLocal, 1.0, 1.0, false);
+		let blurred = this.fastBlurWithStrength(state, false, 1.0);
 		//state = fastBlur(state, releaseFirstInputTex);
-		stateLocal = this.compute.run([stateLocal, inTex], `
+		const stateLocal = this.compute.run([blurred, inTex], `
 			float state = texture(tex1).r;
 			float binary = texture(tex2).r;
 			state = mix(state, state * binary, 0.5);
@@ -117,6 +123,9 @@ export class ImageProcessor {
 				releaseFirstInputTex: true
 			}
 			);
+		if(releaseFirstInputTex) {
+			this.compute.willNoLongerUse(state);
+		}
 		return stateLocal;
 	}
 

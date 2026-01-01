@@ -138,31 +138,31 @@ export class App {
 			vec2 d = vec2(
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
-				);
+				) * 160.0;
 			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
-			vec2 mouseUv = vec2(0.52,0.015);//mouse;
+			vec2 mouseUv = vec2(.8, .6);//mouse;
 			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
 			float pitch = (0.5 - mouseUv.y) * PI;
 			refl = rotateY(refl, yaw);
 			refl = rotateX(refl, pitch);
 			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.04, 1.0, fresnel);
+			float fresnelWeight = mix(0.01, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
 			float eta = 1.0 / 1.33; // air -> water-ish
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			vec2 refractUv = tc + refractOffset * 30.1;
+			vec2 refractUv = tc + refractOffset * .3;
 			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
 			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));
-			
-			_out.rgb += specularRgb; // specular
+			if(here > 0.0)
+				_out.rgb += specularRgb; // specular
 			`, {
 				releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 				iformat: THREE.RGBAFormat,

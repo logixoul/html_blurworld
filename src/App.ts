@@ -76,7 +76,7 @@ export class App {
 		const documentW = window.innerWidth;
 		const documentH = window.innerHeight;
 		globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
-		globals.scale = 0.5;
+		//globals.scale = 0.5;
 		
 		const img = new Image<Float32Array>(
 			Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
@@ -222,7 +222,7 @@ export class App {
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `
 			_out.rgb = texture().rgb;
-			_out.rgb *= step(vec3(2.5), _out.rgb);
+			_out.rgb *= step(vec3(3.5), _out.rgb);
 			`, {
 				releaseFirstInputTex: false
 			}
@@ -234,7 +234,7 @@ export class App {
 			`, {
 				releaseFirstInputTex: true
 			});
-		for(let i = 0; i < 3; i++) {
+		for(let i = 0; i < 4; i++) {
 			//tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
 			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 0.5, true);
 			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `

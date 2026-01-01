@@ -24,20 +24,20 @@ export class ImageProcessor {
 	}
 
 
-	fastBlur(tex: TextureWrapper, releaseFirstInputTex: boolean, scale: number = 1.0): TextureWrapper {
+	fastBlur(tex: TextureWrapper, releaseFirstInputTex: boolean, scale: number = 1.0, outputInternalType? : THREE.TextureDataType): TextureWrapper {
 		return this.compute.run([tex], `
-			float sum = float(0.0);
-			sum += texture().r;
-			sum += texture(tex1, tc + tsize1 * vec2(1, 0)).r;
-			sum += texture(tex1, tc + tsize1 * vec2(0, 1)).r;
-			sum += texture(tex1, tc + tsize1 * vec2(1, 1)).r;
+			float sum = texture().r;
+			sum += texture(tex1, tc + vec2(tsize1.x, 0)).r;
+			sum += texture(tex1, tc + vec2(0, tsize1.y)).r;
+			sum += texture(tex1, tc + tsize1).r;
 
 			_out.r = sum / 4.0f;
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
 				vshaderExtra: `tc -= tsize1 / 2.0;`,
-				scale: new THREE.Vector2(scale, scale)
+				scale: new THREE.Vector2(scale, scale),
+				itype: outputInternalType
 			}
 		);
 	}
@@ -140,7 +140,7 @@ export class ImageProcessor {
 
 		//let blurred = this.fastBlurWithStrength(state, false, 1.0);
 		//blurred = this.fastBlurWithStrength(blurred, true, 1.0);
-		let blurred = this.fastBlur(state, false, .5);
+		let blurred = this.fastBlur(state, false, 1.0, THREE.FloatType);
 		const stateLocal = this.compute.run([inTex], `
 			float blurred = texture(blurredTex).r;
 			float binary = texture(tex1).r;
@@ -152,7 +152,8 @@ export class ImageProcessor {
 				releaseFirstInputTex: false,
 				uniforms: {
 					blurredTex: blurred.get()
-				}
+				},
+				itype: THREE.FloatType
 			}
 			);
 		this.compute.willNoLongerUse(blurred);

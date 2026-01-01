@@ -139,7 +139,7 @@ export class App {
 			vec2 d = vec2(
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
-				) * 160.0;
+				) * 400.0;
 			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec3 refl = reflect(-viewDir, normal);
@@ -158,7 +158,7 @@ export class App {
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			vec2 refractUv = tc + refractOffset * .3;
+			vec2 refractUv = tc + refractOffset * .1;
 			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
 			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));

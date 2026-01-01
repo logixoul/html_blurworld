@@ -140,8 +140,7 @@ export class App {
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
 				);
-			vec2 dOrig = d * 60.0;
-			vec3 normal = normalize(vec3(dOrig.x, dOrig.y, 1.0));
+			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
@@ -159,11 +158,11 @@ export class App {
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.1).rgb;// * pow(albedo, vec3(here));
+			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 10.1).rgb;// * pow(albedo, vec3(here));
 			
 			_out.rgb += specularRgb; // specular
 			`, {
-				releaseFirstInputTex: options.releaseFirstInputTex !== undefined ? options.releaseFirstInputTex : false,
+				releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 				iformat: THREE.RGBAFormat,
 				itype: THREE.FloatType,
 				functions: `
@@ -222,33 +221,32 @@ export class App {
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `
 			_out.rgb = texture().rgb;
-			_out.rgb *= step(vec3(3.5), _out.rgb);
+			_out.rgb *= step(vec3(10.5), _out.rgb);
 			`, {
 				releaseFirstInputTex: false
 			}
 
 		);
 		let tex3dBlurCollected = this.imageProcessor.cloneTex(tex3dBlurState);
-		tex3dBlurCollected = this.compute.run([tex3dBlurCollected], `
+		/*tex3dBlurCollected = this.compute.run([tex3dBlurCollected], `
 			_out.rgb = vec3(0.0); // zero it out
 			`, {
 				releaseFirstInputTex: true
-			});
-		for(let i = 0; i < 4; i++) {
+			});*/
+		for(let i = 0; i < 5; i++) {
 			//tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
 			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 0.5, true);
 			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `
-				_out.rgb = texture(tex1).rgb + texture(tex2).rgb;
+				_out.rgb = texture(tex1).rgb*1.05 + texture(tex2).rgb;
 				`, {
 					releaseFirstInputTex: true
 				});
 		}
 		texturesToRelease.push(tex3dBlurState);
 		texturesToRelease.push(tex3dBlurCollected);
-		let tex3dShadowed = this.compute.run([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
+		let tex3dShadowed = this.compute.run([tex3d, tex3dBlurCollected], `
 			vec3 col = texture(tex1).rgb;
 			vec3 bloom = texture(tex2).rgb;
-			vec3 background = texture(tex3).rgb;
 			_out.rgb = col + bloom;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction

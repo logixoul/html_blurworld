@@ -145,9 +145,10 @@ export class ImageProcessor {
 			float blurred = texture(blurredTex).r;
 			float binary = texture(tex0).r;
 			//float state = mix(blurred, blurred * binary, 0.5);
-			blurred *= binary;
-			float state = binary+blurred;
-			_out.r = state;`
+			float stateLocal = blurred;
+			stateLocal += binary;
+			stateLocal *= binary;
+			_out.r = stateLocal;`
 			, {
 				releaseFirstInputTex: false,
 				uniforms: {
@@ -195,9 +196,10 @@ export class ImageProcessor {
 		state = this.compute.run([state, inTex], `
 			float f = texture(tex1).r;
 			float fw = fwidth(f);
-			f = smoothstep(.5-fw, .5+fw, f);
+			f = smoothstep(.5-fw/2.0, .5+fw/2.0, f);
 			f = texture().r * f;
-			_out.r = pow(f,1.0);
+			_out.r = f;
+			//_out.r = texture().r;
 			`, {
 				releaseFirstInputTex: true
 			});

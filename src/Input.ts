@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
+import { App } from "./App.js";
 
 type RenderTargetTexture = {
 	get(): THREE.Texture;
@@ -12,7 +13,6 @@ type RenderTargetTexture = {
 type KeysRegistry = { [key: string]: boolean };
 
 export class Input {
-	private renderer : THREE.WebGLRenderer;
 	private scene: THREE.Scene;
 	private lineGeometry: LineSegmentsGeometry;
 	private paintMaterial: LineMaterial;
@@ -21,7 +21,7 @@ export class Input {
 	private lastMousePos: THREE.Vector2 = new THREE.Vector2;
 	private keysHeld : KeysRegistry = {};
 	#spectatorEulerAngles = { elevation: 0, heading: 0 };
-
+	
 	public get spectatorEulerAngles() { return this.#spectatorEulerAngles; }
 
 	get mousePos() : THREE.Vector2 | undefined {
@@ -32,8 +32,7 @@ export class Input {
 		return this.keysHeld[key];
 	}
 
-	constructor(renderer : THREE.WebGLRenderer) {
-		this.renderer = renderer;
+	constructor(private renderer : THREE.WebGLRenderer, private app : App) {
 		this.scene = new THREE.Scene();
 		this.lineGeometry = new LineSegmentsGeometry();
 		this.lineGeometry.setPositions([0, 0, 0, 0, 0, 0]);
@@ -158,6 +157,11 @@ export class Input {
 	private onKeyDown = (e: KeyboardEvent) => {
 		const char = e.code.toLowerCase();
 		this.keysHeld[char] = true;
+
+		if(char == "keyr") {
+			globals.stateTex0 = this.app.createStateTex();
+		}
+
 	};
 
 	private onKeyUp = (e: KeyboardEvent) => {

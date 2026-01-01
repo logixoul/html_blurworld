@@ -23,7 +23,6 @@ export class App {
 	#renderer : THREE.WebGLRenderer;
 	private windowEquirectangularEnvmap! : THREE.Texture;
 	private gui!: GUI;
-	private heightScaleController?: any;
 	private readonly legacyNormalStrength = 160.0;
 	private perspectiveScene?: THREE.Scene;
 	private perspectiveCamera?: THREE.PerspectiveCamera;
@@ -36,7 +35,7 @@ export class App {
 		this.#renderer = new THREE.WebGLRenderer();
 		document.body.appendChild( this.#renderer.domElement );
 
-		this.input = new Input(this.#renderer);
+		this.input = new Input(this.#renderer, this);
 
 		this.compute = new GpuCompute.GpuComputeContext(this.#renderer);
 		this.imageProcessor = new ImageProcessor(this.compute);
@@ -83,7 +82,7 @@ export class App {
 		requestAnimationFrame(this.animate);
 	}
 
-	private createStateTex() {
+	public createStateTex() {
 		const documentW = window.innerWidth;
 		const documentH = window.innerHeight;
 		globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
@@ -136,7 +135,7 @@ export class App {
 		this.gui.add(this.params, 'fovYDeg', 10.0, 120.0, 1.0).name('FOV Y (deg)');
 		this.gui.add(this.params, 'planeWorldSizeX', 0.1, 10.0, 0.01).name('Plane size X');
 		this.gui.add(this.params, 'planeWorldSizeY', 0.1, 10.0, 0.01).name('Plane size Y');
-		this.heightScaleController = this.gui.add(this.params, 'heightScale', 0.0001, 5.0, 0.0001)
+		this.gui.add(this.params, 'heightScale', 0.01, 3.0, 0.0001)
 			.name('Height scale');
 		this.gui.add(this.params, 'backgroundDistance', 0.01, 20.0, 0.01).name('Background distance');
 		this.gui.add(this.params, 'specularMultiplier', 0.01, 20.0, 0.01).name('Specular multiplier');
@@ -510,8 +509,8 @@ void main() {
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
 		extruded0 = this.imageProcessor.mul(extruded0, .5, true);
-		//let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: false });
-		let tex3d_0 = this.renderInPerspective(extruded0, new THREE.Vector3(0.009, 0.009, 0.009), {});
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.9, 0.9, 0.9), { releaseFirstInputTex: false });
+		//let tex3d_0 = this.renderInPerspective(extruded0, new THREE.Vector3(0.009, 0.009, 0.009), {});
 		texturesToRelease.push(extruded0);
 		//texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
@@ -553,7 +552,7 @@ void main() {
 			this.compute.drawToScreen(tex3d_0);
 		} else if (this.input.isKeyHeld("digit1")) {
 			var toDraw = this.compute.run([extruded0], `
-				float state = texture(tex0).r*10.0;
+				float state = texture(tex0).r;
 				_out.r = state;`
 				, {
 					releaseFirstInputTex: false

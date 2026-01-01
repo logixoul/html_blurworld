@@ -40,7 +40,9 @@ export class App {
 					releaseFirstInputTex: false, // todo: fix memory leak
 					itype: THREE.FloatType
 				});
-
+				this.backgroundPicTex.get().generateMipmaps=true;
+				//this.backgroundPicTex.get().needsUpdate=true;
+				this.backgroundPicTex.get().minFilter=THREE.LinearMipMapLinearFilter;
 				new RGBELoader().load( 'assets/Untitled.hdr', ( texture ) =>{
 					texture.generateMipmaps = true;
 					texture.magFilter = THREE.NearestFilter;
@@ -138,16 +140,7 @@ export class App {
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
 				);
-			vec2 dOrig = d * 100.0;
-			d *= 102.0f;
-			d.x *= -1.0f * .10;
-			
-			//_out.rgb = texture(tex2).rgb;//vec3(0,.2,.5);
-			const vec2 specThres = vec2(-0.02);
-			//vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.3);
-			vec2 fw = fwidth(d);
-			
-			//specular *= vec2(1.0)-smoothstep(specThres - fw/2.0, specThres + fw/2.0, d);
+			vec2 dOrig = d * 60.0;
 			vec3 normal = normalize(vec3(dOrig.x, dOrig.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec3 refl = reflect(-viewDir, normal);
@@ -159,20 +152,16 @@ export class App {
 			refl = rotateX(refl, pitch);
 			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.04, 1.0, fresnel);
+			float fresnelWeight = mix(0.01, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
 			float eta = 1.0 / 1.33; // air -> water-ish
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.05).rgb;// * pow(albedo, vec3(here));
-			//_out.rgb = pow(here,2.0)*albedo.rgb*8.0;
+			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 0.2).rgb;// * pow(albedo, vec3(here));
 			
-			_out.rgb += specularRgb * .3; // specular
-
-			//_out.rgb /= _out.rgb + 1.0f;
-			//
+			_out.rgb += specularRgb; // specular
 			`, {
 				releaseFirstInputTex: options.releaseFirstInputTex !== undefined ? options.releaseFirstInputTex : false,
 				iformat: THREE.RGBAFormat,
@@ -221,7 +210,10 @@ export class App {
 		globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 		//globals.stateTex1 = stateTex1Shrunken;
 
-		const iters = 30;// * globals.input.mousePos.x / window.innerWidth;
+		let iters = 30;
+		if(this.input.mousePos !== undefined) {
+			//iters *= this.input.mousePos!.x / window.innerWidth;;
+		}
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		if(this.input.isKeyHeld("digit1")) {
@@ -239,7 +231,14 @@ export class App {
 		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.3, 0.03, 0.01), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
-		let tex3dBlurState = this.imageProcessor.cloneTex(tex3d);
+		let tex3dBlurState = this.compute.run([tex3d], `
+			_out.rgb = texture().rgb;
+			_out.rgb *= step(vec3(2.5), _out.rgb);
+			`, {
+				releaseFirstInputTex: false
+			}
+
+		);
 		let tex3dBlurCollected = this.imageProcessor.cloneTex(tex3dBlurState);
 		tex3dBlurCollected = this.compute.run([tex3dBlurCollected], `
 			_out.rgb = vec3(0.0); // zero it out
@@ -247,8 +246,8 @@ export class App {
 				releaseFirstInputTex: true
 			});
 		for(let i = 0; i < 3; i++) {
-			tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
-			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 1.0, true);
+			//tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
+			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 0.5, true);
 			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `
 				_out.rgb = texture(tex1).rgb + texture(tex2).rgb;
 				`, {
@@ -259,14 +258,8 @@ export class App {
 		texturesToRelease.push(tex3dBlurCollected);
 		let tex3dShadowed = this.compute.run([tex3d, tex3dBlurCollected, this.backgroundPicTex], `
 			vec3 col = texture(tex1).rgb;
-			float shadow = texture(tex2).r;
 			vec3 bloom = texture(tex2).rgb;
 			vec3 background = texture(tex3).rgb;
-			if(col.r < 0.0) {
-				col = background; // use background where no data
-				//col /= 1.0 + pow(shadow, 4.0);
-			} else {
-			}
 			_out.rgb = col + bloom;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction

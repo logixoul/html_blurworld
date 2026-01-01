@@ -85,7 +85,7 @@ export class ImageProcessor {
 		return tex2;
 	}
 
-	extrude_oneIteration(state: TextureWrapper, inTex: TextureWrapper, releaseFirstInputTex: boolean): TextureWrapper {
+	extrude_oneIteration(state: TextureWrapper, inTex: TextureWrapper, releaseFirstInputTex: boolean, i : number): TextureWrapper {
 		let stateLocal = this.cloneTex(state);
 		if(releaseFirstInputTex) {
 			this.compute.willNoLongerUse(state);
@@ -95,10 +95,13 @@ export class ImageProcessor {
 		stateLocal = this.compute.run([stateLocal, blurred], `
 			float state = texture(tex1).r;
 			float blurred = texture(tex2).r;
-			state = mix(blurred, state, 0.0);
+			state = mix(blurred, state, 1.0-i);
 			_out.r = state;`
 			, {
 				releaseFirstInputTex: true,
+				uniforms: {
+					i: i
+				}
 			}
 			);
 		this.compute.willNoLongerUse(blurred);
@@ -133,7 +136,7 @@ export class ImageProcessor {
 
 		for(let i = 0; i < iters; i++)
 		{
-			state = this.extrude_oneIteration(state, inTex, /*releaseFirstInputTex=*/ true);
+			state = this.extrude_oneIteration(state, inTex, /*releaseFirstInputTex=*/ true, i/iters);
 		}
 		state.magFilter = THREE.LinearFilter;
 		//state = scale(state, 1.0/scaleArg, true);

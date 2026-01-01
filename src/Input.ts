@@ -18,7 +18,7 @@ export class Input {
 	private paintMaterial: LineMaterial;
 	private lineSegments: LineSegments2;
 	private lastTouchPos: THREE.Vector2 | undefined;
-	private lastMousePos: THREE.Vector2 | undefined;
+	private lastMousePos: THREE.Vector2 = new THREE.Vector2;
 	#mousePos : THREE.Vector2 = new THREE.Vector2(0, 0);
 	private keysHeld : KeysRegistry = {};
 

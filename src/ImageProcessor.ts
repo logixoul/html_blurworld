@@ -144,9 +144,9 @@ export class ImageProcessor {
 		const stateLocal = this.compute.run([inTex], `
 			float blurred = texture(blurredTex).r;
 			float binary = texture(tex1).r;
-			//float state = mix(blurred, blurred * binary, 0.5);
-			blurred *= binary;
-			float state = binary+blurred;
+			float state = mix(blurred, blurred * binary, 0.5);
+			//blurred *= binary;
+			//float state = binary+blurred;
 			_out.r = state;`
 			, {
 				releaseFirstInputTex: false,
@@ -181,7 +181,7 @@ export class ImageProcessor {
 		{
 			state = this.extrude_oneIteration(state, inTex, /*releaseFirstInputTex=*/ true, i/iters);
 		}
-		state = this.mul(state, 1.0/iters, true);
+		//state = this.mul(state, 1.0/iters, true);
 		state.magFilter = THREE.LinearFilter;
 		//state = scale(state, 1.0/scaleArg, true);
 		

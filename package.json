@@ -30,6 +30,7 @@
     "webpack-merge": "^5.8.0"
   },
   "dependencies": {
+    "lil-gui": "^0.19.2",
     "three": "0.136.0"
   }
 }

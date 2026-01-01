@@ -8,6 +8,7 @@ import { Input } from './Input';
 import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import { PresentationForIashu } from './presentationForIashu';
+import GUI from 'lil-gui';
 
 export class App {
 	private backgroundPicTex!: GpuCompute.TextureWrapper;
@@ -20,6 +21,18 @@ export class App {
 	private input : Input;
 	#renderer : THREE.WebGLRenderer;
 	private windowEquirectangularEnvmap! : THREE.Texture;
+	private gui!: GUI;
+	private heightScaleController?: any;
+	private readonly legacyNormalStrength = 160.0;
+	private params = {
+		fovYDeg: 60.0,
+		planeWorldSizeX: 1.0,
+		planeWorldSizeY: 1.0,
+		heightScale: 1.0,
+		autoHeightScale: true,
+		surfaceThickness: 0.3,
+		backgroundDistance: 1.0
+	};
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -29,6 +42,7 @@ export class App {
 
 		this.compute = new GpuCompute.GpuComputeContext(this.#renderer);
 		this.imageProcessor = new ImageProcessor(this.compute);
+		this.initGui();
 		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
 			'assets/milkyway.png',
 			() => {
@@ -105,7 +119,31 @@ export class App {
 		globals.stateTex0 = this.createStateTex();
 		globals.stateTex1 = this.createStateTex();
 		this.#renderer.setSize( window.innerWidth, window.innerHeight );
+		this.updateAutoHeightScale(globals.stateTex0.width);
 	};
+
+	private initGui() {
+		this.gui = new GUI({ title: 'Optics' });
+		this.gui.add(this.params, 'fovYDeg', 10.0, 120.0, 1.0).name('FOV Y (deg)');
+		this.gui.add(this.params, 'planeWorldSizeX', 0.1, 10.0, 0.01).name('Plane size X')
+			.onChange(() => this.updateAutoHeightScale(globals.stateTex0?.width));
+		this.gui.add(this.params, 'planeWorldSizeY', 0.1, 10.0, 0.01).name('Plane size Y');
+		this.gui.add(this.params, 'autoHeightScale').name('Auto height scale')
+			.onChange(() => this.updateAutoHeightScale(globals.stateTex0?.width));
+		this.heightScaleController = this.gui.add(this.params, 'heightScale', 0.0001, 5.0, 0.0001)
+			.name('Height scale');
+		this.gui.add(this.params, 'surfaceThickness', 0.0, 5.0, 0.01).name('Surface thickness');
+		this.gui.add(this.params, 'backgroundDistance', 0.01, 20.0, 0.01).name('Background distance');
+	}
+
+	private updateAutoHeightScale(width?: number) {
+		if (!this.params.autoHeightScale || !width) return;
+		const newScale = this.legacyNormalStrength * (this.params.planeWorldSizeX / width);
+		this.params.heightScale = newScale;
+		if (this.heightScaleController) {
+			this.heightScaleController.setValue(newScale);
+		}
+	}
 
 	private doSimulationStep(inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
 		let state : GpuCompute.TextureWrapper = this.imageProcessor.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
@@ -135,12 +173,13 @@ export class App {
 		options = options || {};
 		let tex3d = this.compute.run([heightmap], `
 			float here = texture().r;
-			vec2 d = vec2(
-				here - texture(tc - vec2(tsize1.x, 0)).r,
-				here - texture(tc - vec2(0, tsize1.y)).r
-				) * 160.0;
-			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
-			vec3 viewDir = vec3(0.0, 0.0, 1.0);
+			vec2 texelWorld = vec2(planeWorldSize.x * tsize1.x, planeWorldSize.y * tsize1.y);
+			float dhdx = (here - texture(tc - vec2(tsize1.x, 0)).r) * heightScale / max(texelWorld.x, 1e-6);
+			float dhdy = (here - texture(tc - vec2(0, tsize1.y)).r) * heightScale / max(texelWorld.y, 1e-6);
+			vec3 normal = normalize(vec3(dhdx, dhdy, 1.0));
+			float tanHalfFov = tan(cameraFovY * 0.5);
+			vec2 ndc = tc * 2.0 - 1.0;
+			vec3 viewDir = normalize(vec3(ndc.x * cameraAspect * tanHalfFov, ndc.y * tanHalfFov, 1.0));
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
 			vec2 mouseUv = vec2(.8, .6);//mouse;
@@ -150,15 +189,16 @@ export class App {
 			refl = rotateX(refl, pitch);
 			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.01, 1.0, fresnel);
+			float fresnelWeight = mix(0.1, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
 			float eta = 1.0 / 1.33; // air -> water-ish
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			vec2 refractUv = tc + refractOffset * .3;
-			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
+			float depthRatio = surfaceThickness / max(backgroundDistance, 1e-3);
+			vec2 refractUv = tc + refractOffset * depthRatio;
+			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset * depthRatio) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
 			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));
 			if(here > 0.0)
@@ -197,6 +237,12 @@ export class App {
 					envmap: this.windowEquirectangularEnvmap,
 					backgroundPicTex: this.backgroundPicTex.get(),
 					backgroundPicTexSize: new THREE.Vector2(this.backgroundPicTex.width, this.backgroundPicTex.height),
+					cameraFovY: THREE.MathUtils.degToRad(this.params.fovYDeg),
+					cameraAspect: window.innerWidth / window.innerHeight,
+					planeWorldSize: new THREE.Vector2(this.params.planeWorldSizeX, this.params.planeWorldSizeY),
+					heightScale: this.params.heightScale,
+					surfaceThickness: this.params.surfaceThickness,
+					backgroundDistance: this.params.backgroundDistance,
 					lodBias: 0.0,
 					lodMax: 3.0,
 					refractLodScale: 5.0

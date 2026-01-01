@@ -30,7 +30,6 @@ export class App {
 		planeWorldSizeY: 1.0,
 		heightScale: 1.0,
 		autoHeightScale: true,
-		surfaceThickness: 0.3,
 		backgroundDistance: 1.0
 	};
 
@@ -132,7 +131,6 @@ export class App {
 			.onChange(() => this.updateAutoHeightScale(globals.stateTex0?.width));
 		this.heightScaleController = this.gui.add(this.params, 'heightScale', 0.0001, 5.0, 0.0001)
 			.name('Height scale');
-		this.gui.add(this.params, 'surfaceThickness', 0.0, 5.0, 0.01).name('Surface thickness');
 		this.gui.add(this.params, 'backgroundDistance', 0.01, 20.0, 0.01).name('Background distance');
 	}
 
@@ -189,14 +187,15 @@ export class App {
 			refl = rotateX(refl, pitch);
 			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.1, 1.0, fresnel);
+			float fresnelWeight = mix(0.03, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
 			float eta = 1.0 / 1.33; // air -> water-ish
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			float depthRatio = surfaceThickness / max(backgroundDistance, 1e-3);
+			float thickness = here * heightScale / abs(refracted.z);
+			float depthRatio = thickness / max(backgroundDistance, 1e-3);
 			vec2 refractUv = tc + refractOffset * depthRatio;
 			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset * depthRatio) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
@@ -241,7 +240,6 @@ export class App {
 					cameraAspect: window.innerWidth / window.innerHeight,
 					planeWorldSize: new THREE.Vector2(this.params.planeWorldSizeX, this.params.planeWorldSizeY),
 					heightScale: this.params.heightScale,
-					surfaceThickness: this.params.surfaceThickness,
 					backgroundDistance: this.params.backgroundDistance,
 					lodBias: 0.0,
 					lodMax: 3.0,

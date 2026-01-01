@@ -38,15 +38,13 @@ export class App {
 				//_out.rgb = pow(_out.rgb, vec3(2.2));
 				`, {
 					releaseFirstInputTex: false, // todo: fix memory leak
-					itype: THREE.FloatType
+					itype: THREE.FloatType,
+					mipmaps: true
 				});
-				this.backgroundPicTex.get().generateMipmaps=true;
-				//this.backgroundPicTex.get().needsUpdate=true;
-				this.backgroundPicTex.get().minFilter=THREE.LinearMipMapLinearFilter;
 				new RGBELoader().load( 'assets/Untitled.hdr', ( texture ) =>{
 					texture.generateMipmaps = true;
-					texture.magFilter = THREE.NearestFilter;
-					texture.minFilter = THREE.NearestFilter;
+					texture.magFilter = THREE.LinearFilter;
+					texture.minFilter = THREE.LinearMipmapLinearFilter;
 					texture.needsUpdate = true;
 					//texture.mapping = THREE.EquirectangularReflectionMapping;
 
@@ -158,7 +156,10 @@ export class App {
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			_out.rgb = texture(backgroundPicTex, tc + refractOffset * 10.1).rgb;// * pow(albedo, vec3(here));
+			vec2 refractUv = tc + refractOffset * 10.1;
+			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
+			lod = clamp(lod, 0.0, lodMax);
+			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));
 			
 			_out.rgb += specularRgb; // specular
 			`, {
@@ -167,6 +168,18 @@ export class App {
 				itype: THREE.FloatType,
 				functions: `
 				const float PI = 3.14159265358979323846;
+				float manualLod(vec2 uv, vec2 texSize, vec2 refractOffset) {
+					vec2 uvPixels = uv * texSize;
+					vec2 dx = dFdx(uvPixels);
+					vec2 dy = dFdy(uvPixels);
+					float rho = max(dot(dx, dx), dot(dy, dy));
+					rho = max(rho, 1e-8);
+					float lod = 0.5 * log2(rho);
+					float refractMetric = length(dFdx(refractOffset)) + length(dFdy(refractOffset));
+					lod += log2(1.0 + refractMetric * refractLodScale);
+					float maxLod = floor(log2(max(texSize.x, texSize.y)));
+					return clamp(lod, 0.0, maxLod);
+				}
 				vec3 rotateY(vec3 v, float a) {
 					float s = sin(a);
 					float c = cos(a);
@@ -181,7 +194,11 @@ export class App {
 				uniforms: {
 					albedo: albedo,
 					envmap: this.windowEquirectangularEnvmap,
-					backgroundPicTex: this.backgroundPicTex.get()
+					backgroundPicTex: this.backgroundPicTex.get(),
+					backgroundPicTexSize: new THREE.Vector2(this.backgroundPicTex.width, this.backgroundPicTex.height),
+					lodBias: 0.0,
+					lodMax: 3.0,
+					refractLodScale: 5.0
 				}
 			});
 		return tex3d;
@@ -216,35 +233,34 @@ export class App {
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.3, 0.03, 0.01), { releaseFirstInputTex: true });
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.5, 0.3, 0.04), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `
 			_out.rgb = texture().rgb;
-			_out.rgb *= step(vec3(10.5), _out.rgb);
+			_out.rgb *= step(vec3(20.5), _out.rgb);
 			`, {
 				releaseFirstInputTex: false
 			}
 
 		);
-		let tex3dBlurCollected = this.imageProcessor.cloneTex(tex3dBlurState);
-		/*tex3dBlurCollected = this.compute.run([tex3dBlurCollected], `
+		let tex3dBlurCollected = this.compute.run([tex3dBlurState], `
 			_out.rgb = vec3(0.0); // zero it out
 			`, {
-				releaseFirstInputTex: true
-			});*/
+				releaseFirstInputTex: false
+			});
 		for(let i = 0; i < 5; i++) {
 			//tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
 			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 0.5, true);
 			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `
-				_out.rgb = texture(tex1).rgb*1.05 + texture(tex2).rgb;
+				_out.rgb = texture(tex1).rgb*1.2 + texture(tex2).rgb;
 				`, {
 					releaseFirstInputTex: true
 				});
 		}
 		texturesToRelease.push(tex3dBlurState);
 		texturesToRelease.push(tex3dBlurCollected);
-		let tex3dShadowed = this.compute.run([tex3d, tex3dBlurCollected], `
+		let tex3dBloom = this.compute.run([tex3d, tex3dBlurCollected], `
 			vec3 col = texture(tex1).rgb;
 			vec3 bloom = texture(tex2).rgb;
 			_out.rgb = col + bloom;
@@ -253,7 +269,7 @@ export class App {
 			`, {
 				releaseFirstInputTex: false
 			});
-		texturesToRelease.push(tex3dShadowed);
+		texturesToRelease.push(tex3dBloom);
 		if (this.input.isKeyHeld("keyb")) {
 			this.compute.drawToScreen(tex3dBlurCollected);
 		} else if (this.input.isKeyHeld("digit1")) {
@@ -266,7 +282,7 @@ export class App {
 			);
 			this.compute.drawToScreen(toDraw);
 		} else {
-			this.compute.drawToScreen(tex3dShadowed);
+			this.compute.drawToScreen(tex3dBloom);
 		}
 		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));
 	};

@@ -254,6 +254,7 @@ interface ShadeOpts {
 	scale?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
 	iformat?: THREE.PixelFormat;
+	mipmaps?: boolean;
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	functions?: string,
@@ -326,6 +327,7 @@ export class GpuComputeContext {
 			scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
 			itype: options.itype !== undefined ? options.itype : texs[0].get().type,
 			iformat: options.iformat !== undefined ? options.iformat : texs[0].get().format as THREE.PixelFormat,
+			mipmaps: options.mipmaps !== undefined ? options.mipmaps : false,
 			uniforms: options.uniforms || { },
 			vshaderExtra: options.vshaderExtra || "",
 			functions: options.functions || "",
@@ -335,7 +337,6 @@ export class GpuComputeContext {
 		for(const [key, value] of this.#globalUniforms) {
 			processedOptions.uniforms[key] = value;
 		}
-		
 		var renderTarget;
 		if(options.toScreen) {
 			renderTarget = null;
@@ -347,6 +348,14 @@ export class GpuComputeContext {
 			
 			const key = new TexturePoolKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
 			renderTarget = this.texturePool.get(key);
+			const rtTex = renderTarget.get();
+			if (processedOptions.mipmaps) {
+				rtTex.generateMipmaps = true;
+				rtTex.minFilter = THREE.LinearMipmapLinearFilter;
+			} else {
+				rtTex.generateMipmaps = false;
+				rtTex.minFilter = THREE.LinearFilter;
+			}
 		}
 
 
@@ -376,7 +385,7 @@ export class GpuComputeContext {
 					vertexShader: vshader_complete,
 					fragmentShader: fshader_complete,
 					side: THREE.DoubleSide,
-					blending: THREE.NoBlending
+					blending: THREE.NoBlending,
 				} );
 
 			programCache[fshader] = cachedMaterial;

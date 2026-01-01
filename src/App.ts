@@ -190,7 +190,7 @@ export class App {
 			float fresnelWeight = mix(0.03, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
-			float eta = 1.0 / 1.33; // air -> water-ish
+			float eta = 1.0 / 1.5; // air -> water-ish
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;

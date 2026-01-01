@@ -91,7 +91,9 @@ export class App {
 			Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
 			Float32Array);
 			//Uint8Array);
-
+			
+		this.params.planeWorldSizeX *= documentW / documentH;
+		
 		img.forEach((x : number, y : number) => img.set(x, y, Math.random()));
 
 		let stateTex = new GpuCompute.TextureWrapper(new THREE.DataTexture(img.data, img.width, img.height, THREE.RedFormat,
@@ -113,9 +115,7 @@ export class App {
 
 	private onResize = () => {
 		globals.stateTex0 = this.createStateTex();
-		globals.stateTex1 = this.createStateTex();
 		this.#renderer.setSize( window.innerWidth, window.innerHeight );
-		this.updateAutoHeightScale(globals.stateTex0.width);
 	};
 
 	private params = {
@@ -123,7 +123,6 @@ export class App {
 		planeWorldSizeX: 1.0,
 		planeWorldSizeY: 1.0,
 		heightScale: 1.0,
-		autoHeightScale: true,
 		backgroundDistance: 1.0,
 		specularMultiplier: 1.0,
 		specularRotationX: 0.0,
@@ -133,26 +132,14 @@ export class App {
 	private initGui() {
 		this.gui = new GUI({ title: 'Optics' });
 		this.gui.add(this.params, 'fovYDeg', 10.0, 120.0, 1.0).name('FOV Y (deg)');
-		this.gui.add(this.params, 'planeWorldSizeX', 0.1, 10.0, 0.01).name('Plane size X')
-			.onChange(() => this.updateAutoHeightScale(globals.stateTex0?.width));
+		this.gui.add(this.params, 'planeWorldSizeX', 0.1, 10.0, 0.01).name('Plane size X');
 		this.gui.add(this.params, 'planeWorldSizeY', 0.1, 10.0, 0.01).name('Plane size Y');
-		this.gui.add(this.params, 'autoHeightScale').name('Auto height scale')
-			.onChange(() => this.updateAutoHeightScale(globals.stateTex0?.width));
 		this.heightScaleController = this.gui.add(this.params, 'heightScale', 0.0001, 5.0, 0.0001)
 			.name('Height scale');
 		this.gui.add(this.params, 'backgroundDistance', 0.01, 20.0, 0.01).name('Background distance');
 		this.gui.add(this.params, 'specularMultiplier', 0.01, 20.0, 0.01).name('Specular multiplier');
 		this.gui.add(this.params, 'specularRotationX', 0, 1.0, 0.01).name('specularRotationX');
 		this.gui.add(this.params, 'specularRotationY', 0, 1.0, 0.01).name('specularRotationY');
-	}
-
-	private updateAutoHeightScale(width?: number) {
-		if (!this.params.autoHeightScale || !width) return;
-		const newScale = this.legacyNormalStrength * (this.params.planeWorldSizeX / width);
-		this.params.heightScale = newScale;
-		if (this.heightScaleController) {
-			this.heightScaleController.setValue(newScale);
-		}
 	}
 
 	private doSimulationStep(inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {

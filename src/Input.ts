@@ -110,19 +110,13 @@ export class Input {
 		const leftBtnPressed = (e.buttons & 1) != 0;
 		const rightBtnPressed = (e.buttons & 2) != 0;
 		const middleBtnPressed = (e.buttons & 4) != 0;
-		if (leftBtnPressed || rightBtnPressed || middleBtnPressed) {
+		if (leftBtnPressed || rightBtnPressed) {
 			const shouldErase = rightBtnPressed;
 			if (shouldErase) {
 				this.paintMaterial.color = new THREE.Color(0, 0, 0);
 				this.drawLine(globals.stateTex0, oldPos, newPos);
-				this.drawLine(globals.stateTex1, oldPos, newPos);
 			} else {
-				const destinationTexture = middleBtnPressed ? globals.stateTex1 : globals.stateTex0;
-				const erasionTexture = middleBtnPressed ? globals.stateTex0 : globals.stateTex1;
-				// first erase from the other texture to avoid smudging
-				this.paintMaterial.color = new THREE.Color(0, 0, 0);
-				this.drawLine(erasionTexture, oldPos, newPos);
-				// then draw to the destination texture
+				const destinationTexture = globals.stateTex0
 				this.paintMaterial.color = new THREE.Color(1, 1, 1);
 				this.drawLine(destinationTexture, oldPos, newPos);
 			}

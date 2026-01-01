@@ -24,8 +24,8 @@ export class PresentationForIashu {
 	local_extrude_oneIteration(state : GpuCompute.TextureWrapper, inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
 		state = this.imageProcessor.blur(state, 1.0, 1.0, releaseFirstInputTex)!;
 		state = this.compute.run([state, inTex], `
-			float state = texture(tex1).r;
-			float binary = texture(tex2).r;
+			float state = texture(tex0).r;
+			float binary = texture(tex1).r;
 			state *= binary;
 			state = .5 * (state + binary);
 			_out.r = state;`

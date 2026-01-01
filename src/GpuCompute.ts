@@ -99,13 +99,13 @@ const intro = `
 	vec2 tc;
 	
 	vec4 texture() {
-		return texture(tex1, tc);
+		return texture(tex0, tc);
 	}
 	vec4 texture(sampler2D tex_) {
 		return texture(tex_, tc);
 	}
 	vec4 texture(vec2 tc_) {
-		return texture(tex1, tc_);
+		return texture(tex0, tc_);
 	}
 `;
 
@@ -285,8 +285,8 @@ export class GpuComputeContext {
 
 	drawToScreen(inputTex : any) : void {
 		this.runStraightToScreen([inputTex], `
-			vec2 texSize = vec2(textureSize(tex1, 0));
-			_out.rgb = texelFetch(tex1, ivec2(tc * texSize), 0).rgb;
+			vec2 texSize = vec2(textureSize(tex0, 0));
+			_out.rgb = texelFetch(tex0, ivec2(tc * texSize), 0).rgb;
 			`, {
 				releaseFirstInputTex: false
 			});
@@ -361,8 +361,8 @@ export class GpuComputeContext {
 
 		var i = 0;
 		texs.forEach(tex => {
-			const name = "tex" + (i+1);
-			const tsizeName = "tsize" + (i+1);
+			const name = "tex" + i;
+			const tsizeName = "tsize" + i;
 			var texture : TextureWrapper = texs[i];
 			processedOptions.uniforms[name] = texture.get();
 			const texSize = getTextureSize(texture.get());

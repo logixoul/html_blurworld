@@ -178,15 +178,15 @@ export class App {
 		options = options || {};
 		let tex3d = this.compute.run([heightmap], `
 			float here = texture().r;
-			vec2 texelWorld = vec2(planeWorldSize.x * tsize1.x, planeWorldSize.y * tsize1.y);
-			float dhdx = (here - texture(tc - vec2(tsize1.x, 0)).r) * heightScale / max(texelWorld.x, 1e-6);
-			float dhdy = (here - texture(tc - vec2(0, tsize1.y)).r) * heightScale / max(texelWorld.y, 1e-6);
+			vec2 texelWorld = vec2(planeWorldSize.x * tsize0.x, planeWorldSize.y * tsize0.y);
+			float dhdx = (here - texture(tc - vec2(tsize0.x, 0)).r) * heightScale / max(texelWorld.x, 1e-6);
+			float dhdy = (here - texture(tc - vec2(0, tsize0.y)).r) * heightScale / max(texelWorld.y, 1e-6);
 			vec3 normal = normalize(vec3(dhdx, dhdy, 1.0));
 			float tanHalfFov = tan(cameraFovY * 0.5);
 			vec2 ndc = tc * 2.0 - 1.0;
 			vec3 viewDir = normalize(vec3(ndc.x * cameraAspect * tanHalfFov, ndc.y * tanHalfFov, 1.0));
 			vec3 refl = reflect(-viewDir, normal);
-			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
+			vec2 res = vec2(1.0 / tsize0.x, 1.0 / tsize0.y);
 			vec2 mouseUv = vec2(specularRotationX, specularRotationY);//mouse;
 			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
 			float pitch = (0.5 - mouseUv.y) * PI;
@@ -310,7 +310,7 @@ export class App {
 			//tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
 			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 0.5, true);
 			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `
-				_out.rgb = texture(tex1).rgb*1.2 + texture(tex2).rgb;
+				_out.rgb = texture(tex0).rgb*1.2 + texture(tex1).rgb;
 				`, {
 					releaseFirstInputTex: true
 				});
@@ -318,8 +318,8 @@ export class App {
 		texturesToRelease.push(tex3dBlurState);
 		texturesToRelease.push(tex3dBlurCollected);
 		let tex3dBloom = this.compute.run([tex3d, tex3dBlurCollected], `
-			vec3 col = texture(tex1).rgb;
-			vec3 bloom = texture(tex2).rgb;
+			vec3 col = texture(tex0).rgb;
+			vec3 bloom = texture(tex1).rgb;
 			_out.rgb = col + bloom;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
@@ -331,7 +331,7 @@ export class App {
 			this.compute.drawToScreen(tex3dBlurCollected);
 		} else if (this.input.isKeyHeld("digit1")) {
 			var toDraw = this.compute.run([extruded0], `
-				float state = texture(tex1).r*10.0;
+				float state = texture(tex0).r*10.0;
 				_out.r = state;`
 				, {
 					releaseFirstInputTex: false

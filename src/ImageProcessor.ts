@@ -27,15 +27,15 @@ export class ImageProcessor {
 	fastBlur(tex: TextureWrapper, releaseFirstInputTex: boolean, scale: number = 1.0, outputInternalType? : THREE.TextureDataType): TextureWrapper {
 		return this.compute.run([tex], `
 			float sum = texture().r;
-			sum += texture(tex1, tc + vec2(tsize1.x, 0)).r;
-			sum += texture(tex1, tc + vec2(0, tsize1.y)).r;
-			sum += texture(tex1, tc + tsize1).r;
+			sum += texture(tex0, tc + vec2(tsize0.x, 0)).r;
+			sum += texture(tex0, tc + vec2(0, tsize0.y)).r;
+			sum += texture(tex0, tc + tsize0).r;
 
 			_out.r = sum / 4.0f;
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
-				vshaderExtra: `tc -= tsize1 / 2.0;`,
+				vshaderExtra: `tc -= tsize0 / 2.0;`,
 				scale: new THREE.Vector2(scale, scale),
 				itype: outputInternalType
 			}
@@ -46,18 +46,18 @@ export class ImageProcessor {
 	fastBlurWithStrength(tex: TextureWrapper, releaseFirstInputTex: boolean, strength: number): TextureWrapper {
 		return this.compute.run([tex], `
 			float sum = float(0.0);
-			float here = texture(tex1, tc + tsize1 * vec2(.5, .5)).r;
+			float here = texture(tex0, tc + tsize0 * vec2(.5, .5)).r;
 			sum += here;
 			sum += texture().r;
-			sum += texture(tex1, tc + tsize1 * vec2(1, 0)).r;
-			sum += texture(tex1, tc + tsize1 * vec2(0, 1)).r;
-			sum += texture(tex1, tc + tsize1 * vec2(1, 1)).r;
+			sum += texture(tex0, tc + tsize0 * vec2(1, 0)).r;
+			sum += texture(tex0, tc + tsize0 * vec2(0, 1)).r;
+			sum += texture(tex0, tc + tsize0 * vec2(1, 1)).r;
 
 			_out.r = mix(here, sum / 5.0f, strength);
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
-				vshaderExtra: `tc -= tsize1 / 2.0;`,
+				vshaderExtra: `tc -= tsize0 / 2.0;`,
 				uniforms: {
 					strength: strength
 				}
@@ -80,29 +80,29 @@ export class ImageProcessor {
 			for(int x = -3; x <= 3; x++) {
 				for(int y = -3; y <= 3; y++) {
 					ivec2 xy = ivec2(x, y);
-					sum += texture(tex1, tc + tsize1 * vec2(xy)).r * weights1D[x+3] * weights1D[y+3];
+					sum += texture(tex0, tc + tsize0 * vec2(xy)).r * weights1D[x+3] * weights1D[y+3];
 				}
 			}
 			_out.r = sum;
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
-				vshaderExtra: `tc -= tsize1 / 2.0;`
+				vshaderExtra: `tc -= tsize0 / 2.0;`
 			}
 		);
 	}
 
 	blur(tex: TextureWrapper, width: number, scaleArg: number, releaseFirstInputTex: boolean): TextureWrapper {
-		let tex2 = this.compute.run([tex], `
+		let tex1 = this.compute.run([tex], `
 			float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
 			float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
 			_out = texture() * weight[0];
 			for (int i=1; i<3; i++) {
 				_out +=
-					texture(tc + vec2(0.0, offset[i]) * tsize1 * width)
+					texture(tc + vec2(0.0, offset[i]) * tsize0 * width)
 						* weight[i];
 				_out +=
-					texture(tc - vec2(0.0, offset[i]) * tsize1 * width)
+					texture(tc - vec2(0.0, offset[i]) * tsize0 * width)
 						* weight[i];
 			}
 			`
@@ -112,16 +112,16 @@ export class ImageProcessor {
 				scale: new THREE.Vector2(1.0, scaleArg)
 			}
 		);
-		tex2 = this.compute.run([tex2], `
+		tex1 = this.compute.run([tex1], `
 			float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
 			float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
-			_out = texture(tex1, tc) * weight[0];
+			_out = texture(tex0, tc) * weight[0];
 			for (int i=1; i<3; i++) {
 				_out +=
-					texture(tex1, tc + vec2(offset[i], 0.0) * tsize1 * width)
+					texture(tex0, tc + vec2(offset[i], 0.0) * tsize0 * width)
 						* weight[i];
 				_out +=
-					texture(tex1, tc - vec2(offset[i], 0.0) * tsize1 * width)
+					texture(tex0, tc - vec2(offset[i], 0.0) * tsize0 * width)
 						* weight[i];
 			}
 		`
@@ -131,7 +131,7 @@ export class ImageProcessor {
 			scale: new THREE.Vector2(scaleArg, 1.0)
 		}
 		);
-		return tex2;
+		return tex1;
 	}
 
 	extrude_oneIteration(state: TextureWrapper, inTex: TextureWrapper, releaseFirstInputTex: boolean, i : number): TextureWrapper {
@@ -143,7 +143,7 @@ export class ImageProcessor {
 		//let blurred = this.fastBlur(state, false, 1.0, THREE.FloatType);
 		const stateLocal = this.compute.run([inTex], `
 			float blurred = texture(blurredTex).r;
-			float binary = texture(tex1).r;
+			float binary = texture(tex0).r;
 			//float state = mix(blurred, blurred * binary, 0.5);
 			blurred *= binary;
 			float state = binary+blurred;
@@ -193,7 +193,7 @@ export class ImageProcessor {
 		
 		// make edges sharp again
 		state = this.compute.run([state, inTex], `
-			float f = texture(tex2).r;
+			float f = texture(tex1).r;
 			float fw = fwidth(f);
 			f = smoothstep(.5-fw, .5+fw, f);
 			f = texture().r * f;
@@ -211,7 +211,7 @@ export class ImageProcessor {
 		return this.compute.run([tex], `
 			float f = texture().r;
 			ivec2 fc=  ivec2(gl_FragCoord.xy);
-			ivec2 maxCoords = textureSize(tex1, 0) - ivec2(1, 1);
+			ivec2 maxCoords = textureSize(tex0, 0) - ivec2(1, 1);
 			if(fc.x == 0 || fc.y == 0 || fc.x == maxCoords.x || fc.y == maxCoords.y) f = 0.0f;
 			_out.r = f;
 			`, {

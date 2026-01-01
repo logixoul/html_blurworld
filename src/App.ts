@@ -9,6 +9,7 @@ import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import { PresentationForIashu } from './presentationForIashu';
 import GUI from 'lil-gui';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 export class App {
 	private backgroundPicTex!: GpuCompute.TextureWrapper;
@@ -29,6 +30,7 @@ export class App {
 	private perspectiveMesh?: THREE.Mesh;
 	private perspectiveMaterial?: THREE.ShaderMaterial;
 	private perspectiveGeomSize?: THREE.Vector2;
+	private orbitControls?: OrbitControls;
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -122,7 +124,7 @@ export class App {
 		fovYDeg: 60.0,
 		planeWorldSizeX: 1.0,
 		planeWorldSizeY: 1.0,
-		heightScale: 1.0,
+		heightScale: 0.3,
 		backgroundDistance: 1.0,
 		specularMultiplier: 1.0,
 		specularRotationX: 0.0,
@@ -198,7 +200,7 @@ export class App {
 			vec2 refractUv = tc + refractOffset * depthRatio;
 			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset * depthRatio) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
-			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));
+			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(thickness));
 			if(here > 0.0)
 				_out.rgb += specularRgb * specularMultiplier; // specular
 			`, {
@@ -380,6 +382,13 @@ void main() {
 
 			this.perspectiveScene = new THREE.Scene();
 			this.perspectiveCamera = new THREE.PerspectiveCamera(this.params.fovYDeg, window.innerWidth / window.innerHeight, 0.01, 1000.0);
+
+			this.orbitControls = new OrbitControls( this.perspectiveCamera, this.#renderer.domElement );
+			const initDistance = (this.params.planeWorldSizeY * 0.5) / Math.tan(THREE.MathUtils.degToRad(this.params.fovYDeg) * 0.5);
+			this.perspectiveCamera.position.set(0.0, 0.0, initDistance + this.params.heightScale);
+			this.orbitControls.target.set(0.0, 0.0, 0.0);
+			this.orbitControls.update();
+
 			this.perspectiveMaterial = new THREE.ShaderMaterial({
 				uniforms: {
 					heightmap: { value: heightTex },
@@ -423,8 +432,11 @@ void main() {
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.near = 0.01;
 		camera.far = Math.max(1000.0, distance + this.params.backgroundDistance * 4.0 + this.params.heightScale * 4.0);
-		camera.position.set(0.0, 0.0, distance);
-		camera.lookAt(0.0, 0.0, 0.0);
+
+		
+		//camera.lookAt(0.0, 0.0, 0.0);
+		camera.updateProjectionMatrix();
+		this.orbitControls!.update();
 		camera.updateProjectionMatrix();
 
 		const uniforms = this.perspectiveMaterial!.uniforms;
@@ -467,6 +479,8 @@ void main() {
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
+		this.orbitControls?.update();
+
 		let mousePos = this.input.mousePos;
 		if(typeof mousePos == "undefined")
 			mousePos = new THREE.Vector2(0, 0); // this is normally harmless
@@ -497,7 +511,7 @@ void main() {
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
 		extruded0 = this.imageProcessor.mul(extruded0, .5, true);
 		//let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: false });
-		let tex3d_0 = this.renderInPerspective(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), {});
+		let tex3d_0 = this.renderInPerspective(extruded0, new THREE.Vector3(0.009, 0.009, 0.009), {});
 		texturesToRelease.push(extruded0);
 		//texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;

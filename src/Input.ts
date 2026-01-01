@@ -20,6 +20,9 @@ export class Input {
 	private lastTouchPos: THREE.Vector2 | undefined;
 	private lastMousePos: THREE.Vector2 = new THREE.Vector2;
 	private keysHeld : KeysRegistry = {};
+	#spectatorEulerAngles = { elevation: 0, heading: 0 };
+
+	public get spectatorEulerAngles() { return this.#spectatorEulerAngles; }
 
 	get mousePos() : THREE.Vector2 | undefined {
 		return this.lastMousePos;
@@ -120,6 +123,12 @@ export class Input {
 				this.paintMaterial.color = new THREE.Color(1, 1, 1);
 				this.drawLine(destinationTexture, oldPos, newPos);
 			}
+		}
+		if(middleBtnPressed) {
+			const dx = newPos.x - oldPos.x;
+			const dy = newPos.y - oldPos.y;
+			this.#spectatorEulerAngles.elevation += dy*0.01;
+			this.#spectatorEulerAngles.heading += dx*0.01;
 		}
 		this.lastMousePos = newPos;
 	};

@@ -27,15 +27,15 @@ export class ImageProcessor {
 	fastBlur(tex: TextureWrapper, releaseFirstInputTex: boolean, scale: number = 1.0, outputInternalType? : THREE.TextureDataType): TextureWrapper {
 		return this.compute.run([tex], `
 			float sum = texture().r;
-			sum += texture(tex0, tc + vec2(tsize0.x, 0)).r;
-			sum += texture(tex0, tc + vec2(0, tsize0.y)).r;
-			sum += texture(tex0, tc + tsize0).r;
+			sum += texture(tex0, tc + vec2(texelSize0.x, 0)).r;
+			sum += texture(tex0, tc + vec2(0, texelSize0.y)).r;
+			sum += texture(tex0, tc + texelSize0).r;
 
 			_out.r = sum / 4.0f;
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
-				vshaderExtra: `tc -= tsize0 / 2.0;`,
+				vshaderExtra: `tc -= texelSize0 / 2.0;`,
 				scale: new THREE.Vector2(scale, scale),
 				itype: outputInternalType
 			}
@@ -46,18 +46,18 @@ export class ImageProcessor {
 	fastBlurWithStrength(tex: TextureWrapper, releaseFirstInputTex: boolean, strength: number): TextureWrapper {
 		return this.compute.run([tex], `
 			float sum = float(0.0);
-			float here = texture(tex0, tc + tsize0 * vec2(.5, .5)).r;
+			float here = texture(tex0, tc + texelSize0 * vec2(.5, .5)).r;
 			sum += here;
 			sum += texture().r;
-			sum += texture(tex0, tc + tsize0 * vec2(1, 0)).r;
-			sum += texture(tex0, tc + tsize0 * vec2(0, 1)).r;
-			sum += texture(tex0, tc + tsize0 * vec2(1, 1)).r;
+			sum += texture(tex0, tc + texelSize0 * vec2(1, 0)).r;
+			sum += texture(tex0, tc + texelSize0 * vec2(0, 1)).r;
+			sum += texture(tex0, tc + texelSize0 * vec2(1, 1)).r;
 
 			_out.r = mix(here, sum / 5.0f, strength);
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
-				vshaderExtra: `tc -= tsize0 / 2.0;`,
+				vshaderExtra: `tc -= texelSize0 / 2.0;`,
 				uniforms: {
 					strength: strength
 				}
@@ -80,14 +80,14 @@ export class ImageProcessor {
 			for(int x = -3; x <= 3; x++) {
 				for(int y = -3; y <= 3; y++) {
 					ivec2 xy = ivec2(x, y);
-					sum += texture(tex0, tc + tsize0 * vec2(xy)).r * weights1D[x+3] * weights1D[y+3];
+					sum += texture(tex0, tc + texelSize0 * vec2(xy)).r * weights1D[x+3] * weights1D[y+3];
 				}
 			}
 			_out.r = sum;
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
-				vshaderExtra: `tc -= tsize0 / 2.0;`
+				vshaderExtra: `tc -= texelSize0 / 2.0;`
 			}
 		);
 	}
@@ -99,10 +99,10 @@ export class ImageProcessor {
 			_out = texture() * weight[0];
 			for (int i=1; i<3; i++) {
 				_out +=
-					texture(tc + vec2(0.0, offset[i]) * tsize0 * width)
+					texture(tc + vec2(0.0, offset[i]) * texelSize0 * width)
 						* weight[i];
 				_out +=
-					texture(tc - vec2(0.0, offset[i]) * tsize0 * width)
+					texture(tc - vec2(0.0, offset[i]) * texelSize0 * width)
 						* weight[i];
 			}
 			`
@@ -118,10 +118,10 @@ export class ImageProcessor {
 			_out = texture(tex0, tc) * weight[0];
 			for (int i=1; i<3; i++) {
 				_out +=
-					texture(tex0, tc + vec2(offset[i], 0.0) * tsize0 * width)
+					texture(tex0, tc + vec2(offset[i], 0.0) * texelSize0 * width)
 						* weight[i];
 				_out +=
-					texture(tex0, tc - vec2(offset[i], 0.0) * tsize0 * width)
+					texture(tex0, tc - vec2(offset[i], 0.0) * texelSize0 * width)
 						* weight[i];
 			}
 		`

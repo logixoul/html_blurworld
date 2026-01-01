@@ -362,7 +362,7 @@ export class GpuComputeContext {
 		var i = 0;
 		texs.forEach(tex => {
 			const name = "tex" + i;
-			const tsizeName = "tsize" + i;
+			const tsizeName = "texelSize" + i;
 			var texture : TextureWrapper = texs[i];
 			processedOptions.uniforms[name] = texture.get();
 			const texSize = getTextureSize(texture.get());

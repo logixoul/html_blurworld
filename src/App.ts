@@ -436,7 +436,7 @@ void main() {
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.near = 0.01;
 		camera.far = Math.max(1000.0, distance + this.params.backgroundDistance * 4.0 + this.params.heightScale * 4.0);
-		camera.position.set(0.0, 0.0, distance + this.params.heightScale);
+		camera.position.set(0.0, 0.0, distance);
 		camera.lookAt(0.0, 0.0, 0.0);
 		camera.updateProjectionMatrix();
 

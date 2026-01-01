@@ -24,6 +24,11 @@ export class App {
 	private gui!: GUI;
 	private heightScaleController?: any;
 	private readonly legacyNormalStrength = 160.0;
+	private perspectiveScene?: THREE.Scene;
+	private perspectiveCamera?: THREE.PerspectiveCamera;
+	private perspectiveMesh?: THREE.Mesh;
+	private perspectiveMaterial?: THREE.ShaderMaterial;
+	private perspectiveGeomSize?: THREE.Vector2;
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -255,8 +260,223 @@ export class App {
 					specularRotationX: this.params.specularRotationX,
 					specularRotationY: this.params.specularRotationY,
 				}
-			});
+		});
 		return tex3d;
+	}
+
+	private renderInPerspective(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
+		options = options || {};
+		const heightWidth = heightmap.width;
+		const heightHeight = heightmap.height;
+		const heightTex = heightmap.get();
+
+		if (!this.perspectiveScene || !this.perspectiveCamera || !this.perspectiveMaterial || !this.perspectiveMesh) {
+			const vertexShader = `
+precision highp float;
+
+/*in vec3 position;
+in vec2 uv;*/ //lx
+
+uniform sampler2D heightmap;
+uniform vec2 heightmapSize;
+uniform vec2 planeWorldSize;
+uniform float heightScale;
+
+out vec3 vWorldPos;
+out vec4 vClipPos;
+flat out ivec2 vTexel;
+
+void main() {
+	vec2 texelPos = uv * (heightmapSize - 1.0);
+	vTexel = ivec2(texelPos + 0.5);
+	float height = texelFetch(heightmap, vTexel, 0).r;
+	vec2 base = (uv - 0.5) * planeWorldSize;
+	vec3 localPos = vec3(base, height * heightScale);
+	vec4 worldPos = modelMatrix * vec4(localPos, 1.0);
+	vWorldPos = worldPos.xyz;
+	vClipPos = projectionMatrix * viewMatrix * worldPos;
+	gl_Position = vClipPos;
+}
+`;
+
+			const fragmentShader = `
+precision highp float;
+precision highp sampler2D;
+
+uniform mat4 projectionMatrix;
+uniform sampler2D heightmap;
+uniform vec2 heightmapSize;
+uniform sampler2D envmap;
+uniform sampler2D backgroundPicTex;
+uniform vec3 albedo;
+uniform vec2 planeWorldSize;
+uniform float heightScale;
+uniform float backgroundDistance;
+uniform float specularMultiplier;
+uniform float specularRotationX;
+uniform float specularRotationY;
+uniform vec3 cameraForward;
+
+in vec3 vWorldPos;
+in vec4 vClipPos;
+flat in ivec2 vTexel;
+
+out vec4 outColor;
+
+const float PI = 3.14159265358979323846;
+
+vec3 rotateY(vec3 v, float a) {
+	float s = sin(a);
+	float c = cos(a);
+	return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z);
+}
+vec3 rotateX(vec3 v, float a) {
+	float s = sin(a);
+	float c = cos(a);
+	return vec3(v.x, c * v.y - s * v.z, s * v.y + c * v.z);
+}
+
+void main() {
+	ivec2 texSize = ivec2(heightmapSize);
+	ivec2 texel = clamp(vTexel, ivec2(0), texSize - ivec2(1));
+	float here = texelFetch(heightmap, texel, 0).r;
+	ivec2 texelLeft = clamp(texel - ivec2(1, 0), ivec2(0), texSize - ivec2(1));
+	ivec2 texelDown = clamp(texel - ivec2(0, 1), ivec2(0), texSize - ivec2(1));
+	float left = texelFetch(heightmap, texelLeft, 0).r;
+	float down = texelFetch(heightmap, texelDown, 0).r;
+
+	vec2 texelWorld = vec2(
+		planeWorldSize.x / max(heightmapSize.x - 1.0, 1.0),
+		planeWorldSize.y / max(heightmapSize.y - 1.0, 1.0)
+	);
+	float dhdx = (here - left) * heightScale / max(texelWorld.x, 1e-6);
+	float dhdy = (here - down) * heightScale / max(texelWorld.y, 1e-6);
+	vec3 normal = normalize(vec3(dhdx, dhdy, 1.0));
+
+	vec3 viewDir = normalize(cameraPosition - vWorldPos);
+	vec3 refl = reflect(-viewDir, normal);
+	float yaw = (specularRotationX - 0.5) * PI * 2.0;
+	float pitch = (0.5 - specularRotationY) * PI;
+	refl = rotateY(refl, yaw);
+	refl = rotateX(refl, pitch);
+	vec2 envUv = vec2(
+		atan(refl.z, refl.x) / (2.0 * PI) + 0.5,
+		asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5
+	);
+	float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+	float fresnelWeight = mix(0.04, 1.0, fresnel);
+	vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
+
+	float eta = 1.0 / 1.5;
+	vec3 refracted = refract(-viewDir, normal, eta);
+	vec2 screenUv = vClipPos.xy / vClipPos.w * 0.5 + 0.5;
+	vec2 refractUv = screenUv;
+
+	float denom = dot(refracted, cameraForward);
+	if (abs(denom) > 1e-5) {
+		vec3 planePoint = cameraPosition + cameraForward * backgroundDistance;
+		float t = dot(planePoint - vWorldPos, cameraForward) / denom;
+		vec3 hit = vWorldPos + refracted * t;
+		vec4 hitClip = projectionMatrix * viewMatrix * vec4(hit, 1.0);
+		refractUv = hitClip.xy / hitClip.w * 0.5 + 0.5;
+	}
+	refractUv = clamp(refractUv, vec2(0.0), vec2(1.0));
+
+	vec3 baseColor = texture(backgroundPicTex, refractUv).rgb * pow(albedo, vec3(here));
+	vec3 color = baseColor;
+	if (here > 0.0) {
+		color += specularRgb * specularMultiplier;
+	}
+	outColor = vec4(color, 1.0);
+}
+`;
+
+			this.perspectiveScene = new THREE.Scene();
+			this.perspectiveCamera = new THREE.PerspectiveCamera(this.params.fovYDeg, window.innerWidth / window.innerHeight, 0.01, 1000.0);
+			this.perspectiveMaterial = new THREE.ShaderMaterial({
+				uniforms: {
+					heightmap: { value: heightTex },
+					heightmapSize: { value: new THREE.Vector2(heightWidth, heightHeight) },
+					planeWorldSize: { value: new THREE.Vector2(this.params.planeWorldSizeX, this.params.planeWorldSizeY) },
+					heightScale: { value: this.params.heightScale },
+					albedo: { value: albedo.clone() },
+					envmap: { value: this.windowEquirectangularEnvmap },
+					backgroundPicTex: { value: this.backgroundPicTex.get() },
+					backgroundDistance: { value: this.params.backgroundDistance },
+					specularMultiplier: { value: this.params.specularMultiplier },
+					specularRotationX: { value: this.params.specularRotationX },
+					specularRotationY: { value: this.params.specularRotationY },
+					cameraForward: { value: new THREE.Vector3() }
+				},
+				vertexShader: vertexShader,
+				fragmentShader: fragmentShader,
+				glslVersion: THREE.GLSL3,
+				side: THREE.DoubleSide
+			});
+			const segmentsX = Math.max(heightWidth - 1, 1);
+			const segmentsY = Math.max(heightHeight - 1, 1);
+			const geometry = new THREE.PlaneGeometry(1.0, 1.0, segmentsX, segmentsY);
+			this.perspectiveGeomSize = new THREE.Vector2(heightWidth, heightHeight);
+			this.perspectiveMesh = new THREE.Mesh(geometry, this.perspectiveMaterial);
+			this.perspectiveMesh.frustumCulled = false;
+			this.perspectiveScene.add(this.perspectiveMesh);
+		} else if (this.perspectiveGeomSize && (this.perspectiveGeomSize.x !== heightWidth || this.perspectiveGeomSize.y !== heightHeight)) {
+			const segmentsX = Math.max(heightWidth - 1, 1);
+			const segmentsY = Math.max(heightHeight - 1, 1);
+			this.perspectiveMesh.geometry.dispose();
+			this.perspectiveMesh.geometry = new THREE.PlaneGeometry(1.0, 1.0, segmentsX, segmentsY);
+			this.perspectiveGeomSize.set(heightWidth, heightHeight);
+		}
+
+		const camera = this.perspectiveCamera!;
+		const fovRad = THREE.MathUtils.degToRad(this.params.fovYDeg);
+		const halfH = this.params.planeWorldSizeY * 0.5;
+		const distance = halfH / Math.tan(fovRad * 0.5);
+		camera.fov = this.params.fovYDeg;
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.near = 0.01;
+		camera.far = Math.max(1000.0, distance + this.params.backgroundDistance * 4.0 + this.params.heightScale * 4.0);
+		camera.position.set(0.0, 0.0, distance + this.params.heightScale);
+		camera.lookAt(0.0, 0.0, 0.0);
+		camera.updateProjectionMatrix();
+
+		const uniforms = this.perspectiveMaterial!.uniforms;
+		uniforms.heightmap.value = heightTex;
+		(uniforms.heightmapSize.value as THREE.Vector2).set(heightWidth, heightHeight);
+		(uniforms.planeWorldSize.value as THREE.Vector2).set(this.params.planeWorldSizeX, this.params.planeWorldSizeY);
+		uniforms.heightScale.value = this.params.heightScale;
+		(uniforms.albedo.value as THREE.Vector3).copy(albedo);
+		uniforms.envmap.value = this.windowEquirectangularEnvmap;
+		uniforms.backgroundPicTex.value = this.backgroundPicTex.get();
+		uniforms.backgroundDistance.value = this.params.backgroundDistance;
+		uniforms.specularMultiplier.value = this.params.specularMultiplier;
+		uniforms.specularRotationX.value = this.params.specularRotationX;
+		uniforms.specularRotationY.value = this.params.specularRotationY;
+		camera.getWorldDirection(uniforms.cameraForward.value as THREE.Vector3);
+
+		const renderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+			format: THREE.RGBAFormat,
+			type: THREE.FloatType,
+			//internalFormat: 'RGBA32F',
+			depthBuffer: true,
+			stencilBuffer: false,
+			minFilter: THREE.LinearFilter,
+			magFilter: THREE.LinearFilter
+		});
+		renderTarget.texture.generateMipmaps = false;
+		renderTarget.texture.wrapS = THREE.ClampToEdgeWrapping;
+		renderTarget.texture.wrapT = THREE.ClampToEdgeWrapping;
+
+		const prevTarget = this.#renderer.getRenderTarget();
+		const prevAutoClear = this.#renderer.autoClear;
+		this.#renderer.setRenderTarget(renderTarget);
+		this.#renderer.autoClear = true;
+		this.#renderer.clear();
+		this.#renderer.render(this.perspectiveScene!, camera);
+		this.#renderer.setRenderTarget(prevTarget);
+		this.#renderer.autoClear = prevAutoClear;
+
+		return new GpuCompute.TextureWrapper(renderTarget);
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
@@ -289,9 +509,10 @@ export class App {
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
 		extruded0 = this.imageProcessor.mul(extruded0, .5, true);
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: false });
+		//let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: false });
+		let tex3d_0 = this.renderInPerspective(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), {});
 		texturesToRelease.push(extruded0);
-		texturesToRelease.push(tex3d_0);
+		//texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `
 			_out.rgb = texture().rgb;
@@ -328,7 +549,7 @@ export class App {
 			});
 		texturesToRelease.push(tex3dBloom);
 		if (this.input.isKeyHeld("keyb")) {
-			this.compute.drawToScreen(tex3dBlurCollected);
+			this.compute.drawToScreen(tex3d_0);
 		} else if (this.input.isKeyHeld("digit1")) {
 			var toDraw = this.compute.run([extruded0], `
 				float state = texture(tex0).r*10.0;
@@ -342,6 +563,8 @@ export class App {
 			this.compute.drawToScreen(tex3dBloom);
 		}
 		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));
+
+		tex3d_0.dispose();
 	};
 }
 

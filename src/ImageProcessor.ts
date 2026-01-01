@@ -109,8 +109,9 @@ export class ImageProcessor {
 	}
 
 	extrude_oneIteration(state: TextureWrapper, inTex: TextureWrapper, releaseFirstInputTex: boolean, i : number): TextureWrapper {
-		//let blurred = this.blur(stateLocal, 1.0, 1.0, false);
-		let blurred = this.fastBlurWithStrength(state, false, 1.0);
+		let blurred = this.blur(state, 1.0, 1.0, false);
+		//let blurred = this.fastBlurWithStrength(state, false, 1.0);
+		//blurred = this.fastBlurWithStrength(blurred, true, 1.0);
 		//state = fastBlur(state, releaseFirstInputTex);
 		const stateLocal = this.compute.run([blurred, inTex], `
 			float state = texture(tex1).r;

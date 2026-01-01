@@ -76,7 +76,7 @@ export class App {
 		const documentW = window.innerWidth;
 		const documentH = window.innerHeight;
 		globals.scale = Math.sqrt(200*150) / Math.sqrt(documentW * documentH);
-		//globals.scale = 1;
+		globals.scale = 0.5;
 		
 		const img = new Image<Float32Array>(
 			Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
@@ -111,7 +111,7 @@ export class App {
 	private doSimulationStep(inTex : GpuCompute.TextureWrapper, releaseFirstInputTex : boolean) {
 		let state : GpuCompute.TextureWrapper = this.imageProcessor.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
 		//state = this.imageProcessor.fastBlur(state, /*releaseFirstInputTex=*/ true);
-		for(let i=0;i<10;i++) {
+		for(let i=0;i<1;i++) {
 			state = this.imageProcessor.blur(state, .15, 1.0, /*releaseFirstInputTex=*/ true);
 		state = this.compute.run([state], `
 			float f = texture().r;

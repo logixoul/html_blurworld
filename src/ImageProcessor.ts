@@ -24,7 +24,7 @@ export class ImageProcessor {
 	}
 
 
-	fastBlur(tex: TextureWrapper, releaseFirstInputTex: boolean): TextureWrapper {
+	fastBlur(tex: TextureWrapper, releaseFirstInputTex: boolean, scale: number = 1.0): TextureWrapper {
 		return this.compute.run([tex], `
 			float sum = float(0.0);
 			sum += texture().r;
@@ -36,7 +36,8 @@ export class ImageProcessor {
 			`
 			, {
 				releaseFirstInputTex: releaseFirstInputTex,
-				vshaderExtra: `tc -= tsize1 / 2.0;`
+				vshaderExtra: `tc -= tsize1 / 2.0;`,
+				scale: new THREE.Vector2(scale, scale)
 			}
 		);
 	}
@@ -63,8 +64,35 @@ export class ImageProcessor {
 			}
 		);
 	}
+	
+		// strength is in [0, 1]
+	blur_singlePass(tex: TextureWrapper, releaseFirstInputTex: boolean): TextureWrapper {
+		return this.compute.run([tex], `
+			const float weights1D[7] = float[](
+				0.05000696,
+				0.12112802,
+				0.20595537,
+				0.24581929,
+				0.20595537,
+				0.12112802,
+				0.05000696 );
+			float sum = float(0.0);
+			for(int x = -3; x <= 3; x++) {
+				for(int y = -3; y <= 3; y++) {
+					ivec2 xy = ivec2(x, y);
+					sum += texture(tex1, tc + tsize1 * vec2(xy)).r * weights1D[x+3] * weights1D[y+3];
+				}
+			}
+			_out.r = sum;
+			`
+			, {
+				releaseFirstInputTex: releaseFirstInputTex,
+				vshaderExtra: `tc -= tsize1 / 2.0;`
+			}
+		);
+	}
 
-	blur(tex: TextureWrapper, width: number = 0.45, scaleArg: number, releaseFirstInputTex: boolean): TextureWrapper {
+	blur(tex: TextureWrapper, width: number, scaleArg: number, releaseFirstInputTex: boolean): TextureWrapper {
 		let tex2 = this.compute.run([tex], `
 			float offset[3] = float[](0.0, 1.3846153846, 3.2307692308);
 			float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
@@ -77,7 +105,6 @@ export class ImageProcessor {
 					texture(tc - vec2(0.0, offset[i]) * tsize1 * width)
 						* weight[i];
 			}
-			_out.a = 1.0f;
 			`
 			, {
 				uniforms: { width: width },
@@ -97,7 +124,6 @@ export class ImageProcessor {
 					texture(tex1, tc - vec2(offset[i], 0.0) * tsize1 * width)
 						* weight[i];
 			}
-			_out.a = 1.0f;
 		`
 		, {
 			uniforms: { width: width },
@@ -109,21 +135,27 @@ export class ImageProcessor {
 	}
 
 	extrude_oneIteration(state: TextureWrapper, inTex: TextureWrapper, releaseFirstInputTex: boolean, i : number): TextureWrapper {
-		let blurred = this.blur(state, 1.0, 1.0, false);
+		//let blurred = this.blur(state, 1.0, 0.5, false);
+		//let blurred = this.blur_singlePass(state, false);
+
 		//let blurred = this.fastBlurWithStrength(state, false, 1.0);
 		//blurred = this.fastBlurWithStrength(blurred, true, 1.0);
-		//state = fastBlur(state, releaseFirstInputTex);
-		const stateLocal = this.compute.run([blurred, inTex], `
-			float state = texture(tex1).r;
-			float binary = texture(tex2).r;
-			state = mix(state, state * binary, 0.5);
+		let blurred = this.fastBlur(state, false, .5);
+		const stateLocal = this.compute.run([inTex], `
+			float blurred = texture(blurredTex).r;
+			float binary = texture(tex1).r;
+			float state = mix(blurred, blurred * binary, 0.5);
 			//state *= binary;
 			//state = .5 * (binary+state);
 			_out.r = state;`
 			, {
-				releaseFirstInputTex: true
+				releaseFirstInputTex: false,
+				uniforms: {
+					blurredTex: blurred.get()
+				}
 			}
 			);
+		this.compute.willNoLongerUse(blurred);
 		if(releaseFirstInputTex) {
 			this.compute.willNoLongerUse(state);
 		}

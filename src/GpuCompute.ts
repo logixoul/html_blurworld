@@ -127,8 +127,6 @@ type MeshCache = { [key: string]: THREE.Mesh };
 var programCache : ProgramCache = { };
 var meshCache : MeshCache = { };
 
-var scene = new THREE.Scene();
-
 class TexturePoolKey {
 	width : number = 0;
 	height : number = 0;
@@ -265,9 +263,15 @@ export class GpuComputeContext {
 	private threeJsRenderer : THREE.WebGLRenderer;
 	private texturePool = new TexturePool();
 	readonly #globalUniforms = new Map<string, UniformUnion>();
+	private readonly mesh : THREE.Mesh;
+	private readonly scene = new THREE.Scene();
+
 
 	constructor(threeJsRenderer : THREE.WebGLRenderer) {
 		this.threeJsRenderer = threeJsRenderer;
+		this.mesh = new THREE.Mesh(geometry);
+		this.mesh.position.set(.5, .5, 0);	
+		this.scene.add(this.mesh);
 	}
 
 	setGlobalUniform(name : string, value : UniformUnion) {
@@ -358,41 +362,34 @@ export class GpuComputeContext {
 		});
 
 		
-		const uniformMapForThreeJs: { [uniform: string]: THREE.IUniform } = {};
-		for (const [key, value] of Object.entries(processedOptions.uniforms)) {
-			uniformMapForThreeJs[key] = new THREE.Uniform(value);
-		}
+
 		
-		const [fshader_complete, vshader_complete] = this.constructFullFragmentShaderSource(processedOptions, fshader);
-		var cachedMaterial = programCache[fshader_complete];
-		var cachedMesh = meshCache[fshader_complete];
+		var cachedMaterial = programCache[fshader];
 		if(!cachedMaterial) {
-			cachedMaterial = new THREE.ShaderMaterial( {
-				uniforms: uniformMapForThreeJs,
-				vertexShader: vshader_complete,
-				fragmentShader: fshader_complete,
-				side: THREE.DoubleSide,
-				blending: THREE.NoBlending
+			const [fshader_complete, vshader_complete] = this.constructFullFragmentShaderSource(processedOptions, fshader);
+				const uniformMapForThreeJs: { [uniform: string]: THREE.IUniform } = {};
+				for (const [key, value] of Object.entries(processedOptions.uniforms)) {
+					uniformMapForThreeJs[key] = new THREE.Uniform(value);
+				}
+				cachedMaterial = new THREE.ShaderMaterial( {
+					uniforms: uniformMapForThreeJs,
+					vertexShader: vshader_complete,
+					fragmentShader: fshader_complete,
+					side: THREE.DoubleSide,
+					blending: THREE.NoBlending
 				} );
-			cachedMesh = new THREE.Mesh( geometry, cachedMaterial );
 
-			programCache[fshader_complete] = cachedMaterial;
-			meshCache[fshader_complete] = cachedMesh;
+			programCache[fshader] = cachedMaterial;
 		}
+		this.mesh.material = cachedMaterial;
+		
 		var material = cachedMaterial;
-		var mesh = cachedMesh;
-		for (const [key, value] of Object.entries(uniformMapForThreeJs)) {
-			material.uniforms[key] = value;
+		for (const [key, value] of Object.entries(processedOptions.uniforms)) {
+			material.uniforms[key].value = value;
 		}
-
-		mesh.position.set(.5, .5, 0);	
-
-		scene.add( mesh );
 
 		this.threeJsRenderer.setRenderTarget(renderTarget?.getRenderTarget() ?? null);
-		this.threeJsRenderer.render(scene, camera);
-
-		scene.remove( mesh );
+		this.threeJsRenderer.render(this.scene, camera);
 
 		if(processedOptions.releaseFirstInputTex) {
 			this.willNoLongerUse(texs[0]);

@@ -112,7 +112,6 @@ export class Input {
 		const middleBtnPressed = (e.buttons & 4) != 0;
 		if (leftBtnPressed || rightBtnPressed || middleBtnPressed) {
 			const shouldErase = rightBtnPressed;
-			console.log("mouse moved: ", oldPos, newPos);
 			if (shouldErase) {
 				this.paintMaterial.color = new THREE.Color(0, 0, 0);
 				this.drawLine(globals.stateTex0, oldPos, newPos);

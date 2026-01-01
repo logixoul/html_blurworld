@@ -194,7 +194,7 @@ export class App {
 			mousePos = new THREE.Vector2(0, 0); // this is normally harmless
 		mousePos = mousePos.clone();
 		mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
-		console.log("mousePos=", mousePos)
+		//console.log("mousePos=", mousePos)
 		this.compute.setGlobalUniform("mouse", mousePos);
 		
 		let texturesToRelease : GpuCompute.TextureWrapper[] = [];

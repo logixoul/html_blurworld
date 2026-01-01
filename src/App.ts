@@ -24,14 +24,6 @@ export class App {
 	private gui!: GUI;
 	private heightScaleController?: any;
 	private readonly legacyNormalStrength = 160.0;
-	private params = {
-		fovYDeg: 60.0,
-		planeWorldSizeX: 1.0,
-		planeWorldSizeY: 1.0,
-		heightScale: 1.0,
-		autoHeightScale: true,
-		backgroundDistance: 1.0
-	};
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -121,6 +113,18 @@ export class App {
 		this.updateAutoHeightScale(globals.stateTex0.width);
 	};
 
+	private params = {
+		fovYDeg: 60.0,
+		planeWorldSizeX: 1.0,
+		planeWorldSizeY: 1.0,
+		heightScale: 1.0,
+		autoHeightScale: true,
+		backgroundDistance: 1.0,
+		specularMultiplier: 1.0,
+		specularRotationX: 0.0,
+		specularRotationY: 0.0
+	};
+
 	private initGui() {
 		this.gui = new GUI({ title: 'Optics' });
 		this.gui.add(this.params, 'fovYDeg', 10.0, 120.0, 1.0).name('FOV Y (deg)');
@@ -132,6 +136,9 @@ export class App {
 		this.heightScaleController = this.gui.add(this.params, 'heightScale', 0.0001, 5.0, 0.0001)
 			.name('Height scale');
 		this.gui.add(this.params, 'backgroundDistance', 0.01, 20.0, 0.01).name('Background distance');
+		this.gui.add(this.params, 'specularMultiplier', 0.01, 20.0, 0.01).name('Specular multiplier');
+		this.gui.add(this.params, 'specularRotationX', 0, 1.0, 0.01).name('specularRotationX');
+		this.gui.add(this.params, 'specularRotationY', 0, 1.0, 0.01).name('specularRotationY');
 	}
 
 	private updateAutoHeightScale(width?: number) {
@@ -180,14 +187,14 @@ export class App {
 			vec3 viewDir = normalize(vec3(ndc.x * cameraAspect * tanHalfFov, ndc.y * tanHalfFov, 1.0));
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
-			vec2 mouseUv = vec2(.8, .6);//mouse;
+			vec2 mouseUv = vec2(specularRotationX, specularRotationY);//mouse;
 			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
 			float pitch = (0.5 - mouseUv.y) * PI;
 			refl = rotateY(refl, yaw);
 			refl = rotateX(refl, pitch);
 			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.03, 1.0, fresnel);
+			float fresnelWeight = mix(0.04, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
 			
 			float eta = 1.0 / 1.5; // air -> water-ish
@@ -201,7 +208,7 @@ export class App {
 			lod = clamp(lod, 0.0, lodMax);
 			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));
 			if(here > 0.0)
-				_out.rgb += specularRgb; // specular
+				_out.rgb += specularRgb * specularMultiplier; // specular
 			`, {
 				releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 				iformat: THREE.RGBAFormat,
@@ -243,7 +250,10 @@ export class App {
 					backgroundDistance: this.params.backgroundDistance,
 					lodBias: 0.0,
 					lodMax: 3.0,
-					refractLodScale: 5.0
+					refractLodScale: 5.0,
+					specularMultiplier: this.params.specularMultiplier,
+					specularRotationX: this.params.specularRotationX,
+					specularRotationY: this.params.specularRotationY,
 				}
 			});
 		return tex3d;
@@ -279,7 +289,8 @@ export class App {
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
 		extruded0 = this.imageProcessor.mul(extruded0, .5, true);
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: true });
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: false });
+		texturesToRelease.push(extruded0);
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `
@@ -320,7 +331,7 @@ export class App {
 			this.compute.drawToScreen(tex3dBlurCollected);
 		} else if (this.input.isKeyHeld("digit1")) {
 			var toDraw = this.compute.run([extruded0], `
-				float state = texture(tex1).r;
+				float state = texture(tex1).r*10.0;
 				_out.r = state;`
 				, {
 					releaseFirstInputTex: false

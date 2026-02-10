@@ -46,13 +46,13 @@ export class App {
 				this.backgroundPicTex.get().wrapS = this.backgroundPicTex.get().wrapT = THREE.RepeatWrapping;
 
 				new RGBELoader().load( `${import.meta.env.BASE_URL}assets/Untitled.hdr`, ( texture ) =>{
-					texture.minFilter = texture.magFilter = THREE.NearestFilter;
+					texture.minFilter = texture.magFilter = THREE.LinearFilter;
 					texture.generateMipmaps = false;
 
 					this.windowEquirectangularEnvmap = texture;
 
 					new RGBELoader().load(`${import.meta.env.BASE_URL}assets/window-blurred.hdr`, (texture) => {
-						texture.minFilter = texture.magFilter = THREE.NearestFilter;
+						texture.minFilter = texture.magFilter = THREE.LinearFilter;
 						texture.generateMipmaps = false;
 
 						this.windowDiffuseEquirectangularEnvmap = texture;
@@ -277,13 +277,16 @@ export class App {
 			`, {
 				releaseFirstInputTex: false
 			});
-		for(let i = 0; i < 5; i++) {
+		for(let i = 0; i < 6; i++) {
 			//tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
 			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 0.5, true);
 			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `
-				_out.rgb = texture(tex1).rgb*1.2 + texture(tex2).rgb;
+				_out.rgb = texture(tex1).rgb + texture(tex2).rgb * weight;
 				`, {
-					releaseFirstInputTex: true
+					releaseFirstInputTex: true,
+					uniforms: {
+						weight: 1.0 / (i*1.5+.5)
+					}
 				});
 		}
 		texturesToRelease.push(tex3dBlurState);
@@ -291,7 +294,7 @@ export class App {
 		let tex3dBloom = this.compute.run([tex3d, tex3dBlurCollected], `
 			vec3 col = texture(tex1).rgb;
 			vec3 bloom = texture(tex2).rgb;
-			_out.rgb = col + bloom;
+			_out.rgb = col + bloom*3.0;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {

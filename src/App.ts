@@ -20,6 +20,7 @@ export class App {
 	private input : Input;
 	#renderer : THREE.WebGLRenderer;
 	private windowEquirectangularEnvmap! : THREE.Texture;
+	private windowDiffuseEquirectangularEnvmap!: THREE.Texture;
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -42,16 +43,21 @@ export class App {
 					itype: THREE.FloatType,
 					mipmaps: true
 				});
+				this.backgroundPicTex.get().wrapS = this.backgroundPicTex.get().wrapT = THREE.RepeatWrapping;
+
 				new RGBELoader().load( `${import.meta.env.BASE_URL}assets/Untitled.hdr`, ( texture ) =>{
 					texture.minFilter = texture.magFilter = THREE.NearestFilter;
 					texture.generateMipmaps = false;
-					//texture.magFilter = THREE.LinearFilter;
-					//texture.minFilter = THREE.LinearMipmapLinearFilter;
-					//texture.needsUpdate = true;
-					//texture.mapping = THREE.EquirectangularReflectionMapping;
 
 					this.windowEquirectangularEnvmap = texture;
-					this.assetsLoaded = true;
+
+					new RGBELoader().load(`${import.meta.env.BASE_URL}assets/window-blurred.hdr`, (texture) => {
+						texture.minFilter = texture.magFilter = THREE.NearestFilter;
+						texture.generateMipmaps = false;
+
+						this.windowDiffuseEquirectangularEnvmap = texture;
+						this.assetsLoaded = true;
+					});
 				});
 			}
 		));
@@ -135,6 +141,10 @@ export class App {
 
 	private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
+		heightmap = this.compute.run([heightmap], `
+			float f = texture().r;
+			_out.r = sqrt(f);
+			`, { releaseFirstInputTex: true });
 		let tex3d = this.compute.run([heightmap], `
 			float here = texture().r;
 			vec2 d = vec2(
@@ -143,34 +153,43 @@ export class App {
 				) * 400.0;
 			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
-			vec3 refl = reflect(-viewDir, normal);
 			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
-			vec2 mouseUv = vec2(.8, .6);//mouse;
+			vec2 mouseUv = vec2(0.7, 0.9);//mouse;
 			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
 			float pitch = (0.5 - mouseUv.y) * PI;
-			refl = rotateY(refl, yaw);
-			refl = rotateX(refl, pitch);
-			vec2 envUv = vec2(atan(refl.z, refl.x) / (2.0 * PI) + 0.5, asin(clamp(refl.y, -1.0, 1.0)) / PI + 0.5);
+			normal = rotateY(normal, yaw);
+			normal = rotateX(normal, pitch);
+			vec3 refl = reflect(-viewDir, normal);
+			vec2 envUv = calcEnvmapTexCoords(refl);
 			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
 			float fresnelWeight = mix(0.01, 1.0, fresnel);
 			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
+			
+			// Diffuse phong lighting
+			vec3 diffuseLighting = texture(envmapDiffuse, calcEnvmapTexCoords(normal)).rgb;
 			
 			float eta = 1.0 / 1.33; // air -> water-ish
 			vec3 refracted = refract(viewDir, normal, eta);
 			float z = max(abs(refracted.z), 1e-3);
 			vec2 refractOffset = refracted.xy / z;
-			vec2 refractUv = tc + refractOffset * .1;
+			vec2 refractUv = tc + refractOffset * .03;
 			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
-			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(here));
+			float absorbCoef = pow(here, .8)*100.0;
+			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(absorbCoef));
+			
 			if(here > 0.0)
-				_out.rgb += specularRgb; // specular
+				_out.rgb += .5*specularRgb; // specular
+				//_out.rgb = diffuseLighting*.001 + .5*specularRgb; // specular
 			`, {
 				releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 				iformat: THREE.RGBAFormat,
 				itype: THREE.FloatType,
 				functions: `
 				const float PI = 3.14159265358979323846;
+				vec2 calcEnvmapTexCoords(vec3 v) {
+					return vec2(atan(v.z, v.x) / (2.0 * PI) + 0.5, asin(clamp(v.y, -1.0, 1.0)) / PI + 0.5);
+				}
 				float manualLod(vec2 uv, vec2 texSize, vec2 refractOffset) {
 					vec2 uvPixels = uv * texSize;
 					vec2 dx = dFdx(uvPixels);
@@ -197,6 +216,7 @@ export class App {
 				uniforms: {
 					albedo: albedo,
 					envmap: this.windowEquirectangularEnvmap,
+					envmapDiffuse: this.windowDiffuseEquirectangularEnvmap,
 					backgroundPicTex: this.backgroundPicTex.get(),
 					backgroundPicTexSize: new THREE.Vector2(this.backgroundPicTex.width, this.backgroundPicTex.height),
 					lodBias: 0.0,
@@ -241,7 +261,7 @@ export class App {
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
 		extruded0 = this.imageProcessor.mul(extruded0, .25, true);
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.09, 0.09, 0.09), { releaseFirstInputTex: true });
+		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.9, 0.9, 0.9), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `

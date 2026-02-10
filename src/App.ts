@@ -81,9 +81,9 @@ export class App {
 	private createStateTex() {
 		const documentW = window.innerWidth;
 		const documentH = window.innerHeight;
-		globals.scale = 0.12;
+		//globals.scale = 0.12;
 		console.log("scale=", globals.scale);
-		//globals.scale = 0.5;
+		globals.scale = 0.5;
 		
 		const img = new Image<Float32Array>(
 			Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
@@ -119,19 +119,30 @@ export class App {
 		let state : GpuCompute.TextureWrapper = this.imageProcessor.zeroOutBorders(inTex, /*releaseFirstInputTex=*/ releaseFirstInputTex);
 		//state = this.imageProcessor.fastBlur(state, /*releaseFirstInputTex=*/ true);
 		for(let i=0;i<1;i++) {
-			state = this.imageProcessor.blur(state, .15, 1.0, /*releaseFirstInputTex=*/ true);
+			state = this.imageProcessor.blur(state, 1.0, 1.0, /*releaseFirstInputTex=*/ true);
 		state = this.compute.run([state], `
 			float f = texture().r;
 			//float fw = fwidth(f)*4.0;
 			//f = smoothstep(.5-fw, .5+fw, f);
 			f = linearstep(0.1, 0.9, f);
-
+			//f = minus200Derivative(f);
 			_out.r = f;
 			`, {
 				releaseFirstInputTex: true,
 				functions: `
 				float linearstep(float edge0, float edge1, float x) {
 					return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+				}
+				// funky effect copied from an old C# implementation
+				float minus200Derivative(float f) {
+					const float sharpenDerivative = -1.0;
+					float k = sharpenDerivative;
+					float _2KMinus2 = 2.0*k-2.0;
+					float _3KMinus3 = 3.0*k-3.0;
+					//if(f>=0.0 && f<=1.0)
+						return ((_2KMinus2*f - _3KMinus3)*f + k) * f;
+					//else
+					//	return f;
 				}
 				`
 			});
@@ -143,14 +154,14 @@ export class App {
 		options = options || {};
 		heightmap = this.compute.run([heightmap], `
 			float f = texture().r;
-			_out.r = sqrt(f);
+			_out.r = pow(f, .7);
 			`, { releaseFirstInputTex: true });
 		let tex3d = this.compute.run([heightmap], `
 			float here = texture().r;
 			vec2 d = vec2(
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
-				) * 400.0;
+				) * 100.0;
 			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);

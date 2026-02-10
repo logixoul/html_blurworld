@@ -36,7 +36,7 @@ export class Input {
 		this.lineGeometry.setPositions([0, 0, 0, 0, 0, 0]);
 		this.paintMaterial = new LineMaterial({
 			color: 0xffffff,
-			linewidth: 4,
+			linewidth: 16,
 			worldUnits: false,
 			alphaToCoverage: true
 		});

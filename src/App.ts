@@ -149,23 +149,91 @@ export class App {
 		}
 		return state;
 	}
-
-	private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
+	private make3d_v2_cyberpunk(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
-		heightmap = this.compute.run([heightmap], `
+		/*heightmap = this.compute.run([heightmap], `
 			float f = texture().r;
-			_out.r = pow(f, .7);
-			`, { releaseFirstInputTex: true });
+			_out.r = pow(f, 1.0);
+			`, { releaseFirstInputTex: true });*/
+
 		let tex3d = this.compute.run([heightmap], `
+			const float M_PI = 3.14159265358;
 			float here = texture().r;
 			vec2 d = vec2(
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
 				) * 100.0;
+
+			float polarAngle = atan(d.y, d.x);
+			float fw;
+			fw = fwidth(here); float heightStep = 1.0-smoothstep(0.1-fw, 0.1+fw, here);
+			float polarAngle01 = (polarAngle/M_PI)*.5 + .5;
+
+			_out.rgb = vec3(.1);
+
+			//float redGlow = smoothstep(0.1-fw, 0.1+fw, polarAngle01) - smoothstep(0.2-fw, 0.2+fw, polarAngle01);
+			//redGlow *= heightStep;
+
+			//float absorbCoef = here * 100.0;
+			//_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb;
+			//_out.rgb *= pow(.9, absorbCoef);
+			
+			if(here > 0.0) {
+				_out.rgb = vec3(0.0);
+				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.2, 0.1), polarAngle01, 0.1, 0.2, heightStep);
+				//_out.rgb += step(; // specular
+				//_out.rgb = diffuseLighting*.01 + .5*specularRgb; // specular
+				//_out.rgb = mix(_out.rgb*0.0, vec3(11.0, 0.2, 0.1), redGlow);
+			}
+			`, {
+			releaseFirstInputTex: options.releaseFirstInputTex ?? false,
+			iformat: THREE.RGBAFormat,
+			itype: THREE.FloatType,
+			functions: `
+				vec3 applyGlow(vec3 c, vec3 glowColor, float polarAngle01, float hueRangeMin, float hueRangeMax, float heightStep) {
+					float fw = fwidth(polarAngle01);
+					float glowAmount = smoothstep(0.1-fw, 0.1+fw, polarAngle01) - smoothstep(0.2-fw, 0.2+fw, polarAngle01);
+					glowAmount *= heightStep;
+					return glowAmount * glowColor;
+				}
+				vec3 rotateY(vec3 v, float a) {
+					float s = sin(a);
+					float c = cos(a);
+					return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z);
+				}
+				vec3 rotateX(vec3 v, float a) {
+					float s = sin(a);
+					float c = cos(a);
+					return vec3(v.x, c * v.y - s * v.z, s * v.y + c * v.z);
+				}
+				`
+		});
+		return tex3d;
+	}
+	private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
+		options = options || {};
+		/*heightmap = this.compute.run([heightmap], `
+			float f = texture().r;
+			_out.r = pow(f, 1.0);
+			`, { releaseFirstInputTex: true });*/
+		
+		let tex3d = this.compute.run([heightmap], `
+			const float M_PI = 3.14159265358;
+			float here = texture().r;
+			vec2 d = vec2(
+				here - texture(tc - vec2(tsize1.x, 0)).r,
+				here - texture(tc - vec2(0, tsize1.y)).r
+				) * 100.0;
+
+			float polarAngle = atan(d.y, d.x);
+			float glowHue = (polarAngle/M_PI)*.5 + .5;
+			float fw = fwidth(glowHue); float redGlow = smoothstep(0.1-fw, 0.1+fw, glowHue) - smoothstep(0.2-fw, 0.2+fw, glowHue);
+			fw = fwidth(here); redGlow *= 1.0-smoothstep(0.1-fw, 0.1+fw, here);
+
 			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
-			vec2 mouseUv = vec2(0.7, 0.9);//mouse;
+			vec2 mouseUv = vec2(0.5, 0.7);//mouse;
 			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
 			float pitch = (0.5 - mouseUv.y) * PI;
 			normal = rotateY(normal, yaw);
@@ -186,12 +254,15 @@ export class App {
 			vec2 refractUv = tc + refractOffset * .03;
 			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
 			lod = clamp(lod, 0.0, lodMax);
-			float absorbCoef = pow(here, .8)*100.0;
-			_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb * pow(albedo, vec3(absorbCoef));
+			float absorbCoef = here * 100.0;
+			//_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb;
+			_out.rgb = vec3(.1);
+			_out.rgb *= pow(albedo, vec3(absorbCoef));
 			
 			if(here > 0.0)
 				_out.rgb += .5*specularRgb; // specular
-				//_out.rgb = diffuseLighting*.001 + .5*specularRgb; // specular
+				//_out.rgb = diffuseLighting*.01 + .5*specularRgb; // specular
+				_out.rgb = mix(_out.rgb, vec3(11.0, 0.2, 0.1), redGlow);
 			`, {
 				releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 				iformat: THREE.RGBAFormat,
@@ -272,12 +343,12 @@ export class App {
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
 		extruded0 = this.imageProcessor.mul(extruded0, .25, true);
-		let tex3d_0 = this.make3d(extruded0, new THREE.Vector3(0.9, 0.9, 0.9), { releaseFirstInputTex: true });
+		let tex3d_0 = this.make3d_v2_cyberpunk(extruded0, new THREE.Vector3(0.9, 0.9, 0.9), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `
 			_out.rgb = texture().rgb;
-			_out.rgb *= step(vec3(20.5), _out.rgb);
+			_out.rgb *= step(vec3(1.5), _out.rgb);
 			`, {
 				releaseFirstInputTex: false
 			}
@@ -296,7 +367,7 @@ export class App {
 				`, {
 					releaseFirstInputTex: true,
 					uniforms: {
-						weight: 1.0 / (i*1.5+.5)
+						weight: 0.1//1.0 / (i*1.5+.5)
 					}
 				});
 		}

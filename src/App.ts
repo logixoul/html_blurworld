@@ -162,49 +162,63 @@ export class App {
 			vec2 d = vec2(
 				here - texture(tc - vec2(tsize1.x, 0)).r,
 				here - texture(tc - vec2(0, tsize1.y)).r
-				) * 100.0;
+				);
 
 			float polarAngle = atan(d.y, d.x);
-			float fw;
-			fw = fwidth(here); float heightStep = 1.0-smoothstep(0.1-fw, 0.1+fw, here);
 			float polarAngle01 = (polarAngle/M_PI)*.5 + .5;
 
-			_out.rgb = vec3(.1);
+			//_out.rgb = vec3(.1);
+			vec3 normal = normalize(vec3(d.x*10.0, d.y*10.0, 1.0));
+			vec3 viewDir = vec3(0.0, 0.0, 1.0);
+			vec3 refl = reflect(-viewDir, normal);
+			vec2 envUv = calcEnvmapTexCoords(refl);
+			vec3 refractedRgb = vec3(max(0.0,envUv.y));//texture(envmap, envUv).rgb;
+			_out.rgb = refractedRgb*.1;
 
-			//float redGlow = smoothstep(0.1-fw, 0.1+fw, polarAngle01) - smoothstep(0.2-fw, 0.2+fw, polarAngle01);
-			//redGlow *= heightStep;
-
-			//float absorbCoef = here * 100.0;
-			//_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb;
-			//_out.rgb *= pow(.9, absorbCoef);
-			
 			if(here > 0.0) {
-				_out.rgb = vec3(0.0);
-				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.2, 0.1), polarAngle01, 0.1, 0.2, heightStep);
-				//_out.rgb += step(; // specular
-				//_out.rgb = diffuseLighting*.01 + .5*specularRgb; // specular
-				//_out.rgb = mix(_out.rgb*0.0, vec3(11.0, 0.2, 0.1), redGlow);
+				//_out.rgb *= abs(d.y);
+				_out.rgb *= .2;
+				float fw;
+				fw = fwidth(here); float heightStep = 1.0-(mySmoothstep(0.2, here)-mySmoothstep(0.4, here)+mySmoothstep(0.6, here));
+				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.2, 0.1)*10.0, polarAngle01, 0.1, 0.13, heightStep);
+				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.4, 0.1).bgr*10.0, polarAngle01, 0.3, 0.33, heightStep);
+				d *= 102.0f;
+				d.x *= -1.0f * .10;
+
+				//_out.rgb = texture(tex2).rgb;//vec3(0,.2,.5);
+				const vec2 specThres = vec2(-0.02);
+				vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.5);
+				vec2 fwD = fwidth(d);
+
+				specular *= vec2(1.0)-smoothstep(specThres - fwD/2.0, specThres + fwD/2.0, d);
+				vec3 specularRgb = vec3(specular.y);
+				_out.rgb += specularRgb *.06;
+
+
+				//fw = fwidth(d.y); float specular = smoothstep(0.01-fw, 0.01+fw, -d.y*0.7) * 3.0 * -d.y;
+				//_out.rgb += specular;
+				//_out.rgb = applyGlow(_out.rgb, vec3(11.0, 11.0, 0.1), polarAngle01, 0.8, 0.83, heightStep);
 			}
 			`, {
 			releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 			iformat: THREE.RGBAFormat,
 			itype: THREE.FloatType,
 			functions: `
-				vec3 applyGlow(vec3 c, vec3 glowColor, float polarAngle01, float hueRangeMin, float hueRangeMax, float heightStep) {
+				float mySmoothstep(float thres, float val) {
+					float fw = fwidth(val);
+					return smoothstep(thres - fw, thres + fw, val);
+				}
+				vec3 applyGlow(vec3 oldColor, vec3 glowColor, float polarAngle01, float hueRangeMin, float hueRangeMax, float heightStep) {
 					float fw = fwidth(polarAngle01);
-					float glowAmount = smoothstep(0.1-fw, 0.1+fw, polarAngle01) - smoothstep(0.2-fw, 0.2+fw, polarAngle01);
+					float glowAmount =
+						smoothstep(hueRangeMin-fw, hueRangeMin+fw, polarAngle01)
+						- smoothstep(hueRangeMax-fw, hueRangeMax+fw, polarAngle01);
 					glowAmount *= heightStep;
-					return glowAmount * glowColor;
+					return mix(oldColor, glowColor, glowAmount);
 				}
-				vec3 rotateY(vec3 v, float a) {
-					float s = sin(a);
-					float c = cos(a);
-					return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z);
-				}
-				vec3 rotateX(vec3 v, float a) {
-					float s = sin(a);
-					float c = cos(a);
-					return vec3(v.x, c * v.y - s * v.z, s * v.y + c * v.z);
+				const float PI = 3.14159265358979323846;
+				vec2 calcEnvmapTexCoords(vec3 v) {
+					return vec2(atan(v.z, v.x) / (2.0 * PI) + 0.5, asin(clamp(v.y, -1.0, 1.0)) / PI + 0.5);
 				}
 				`
 		});
@@ -342,7 +356,6 @@ export class App {
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
-		extruded0 = this.imageProcessor.mul(extruded0, .25, true);
 		let tex3d_0 = this.make3d_v2_cyberpunk(extruded0, new THREE.Vector3(0.9, 0.9, 0.9), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
 		let tex3d = tex3d_0;
@@ -376,7 +389,7 @@ export class App {
 		let tex3dBloom = this.compute.run([tex3d, tex3dBlurCollected], `
 			vec3 col = texture(tex1).rgb;
 			vec3 bloom = texture(tex2).rgb;
-			_out.rgb = col + bloom*3.0;
+			_out.rgb = col + bloom*1.0;
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {

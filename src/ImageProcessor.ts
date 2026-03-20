@@ -144,7 +144,7 @@ export class ImageProcessor {
 		const stateLocal = this.compute.run([inTex], `
 			float blurred = texture(blurredTex).r;
 			float binary = texture(tex1).r;
-			float state = mix(blurred, blurred * binary, 0.5);
+			float state = mix(blurred, blurred * binary, 0.1);
 			//blurred *= binary;
 			//float state = binary+blurred;
 			_out.r = state;`

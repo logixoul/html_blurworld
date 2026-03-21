@@ -21,6 +21,7 @@ export class App {
 	#renderer : THREE.WebGLRenderer;
 	private windowEquirectangularEnvmap! : THREE.Texture;
 	private windowDiffuseEquirectangularEnvmap!: THREE.Texture;
+	private elapsedTime = 0;
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -167,16 +168,14 @@ export class App {
 			float polarAngle = atan(d.y, d.x);
 			float polarAngle01 = (polarAngle/M_PI)*.5 + .5;
 
-			//_out.rgb = vec3(.1);
 			vec3 normal = normalize(vec3(d.x*10.0, d.y*10.0, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 envUv = calcEnvmapTexCoords(refl);
-			vec3 refractedRgb = vec3(max(0.0,envUv.y));//texture(envmap, envUv).rgb;
+			vec3 refractedRgb = vec3(max(0.0,envUv.y));
 			_out.rgb = refractedRgb*.1;
 
 			if(here > 0.0) {
-				//_out.rgb *= abs(d.y);
 				_out.rgb *= .2;
 				float fw;
 				fw = fwidth(here); float heightStep = 1.0-(mySmoothstep(0.2, here)-mySmoothstep(0.4, here)+mySmoothstep(0.6, here));
@@ -185,7 +184,6 @@ export class App {
 				d *= 102.0f;
 				d.x *= -1.0f * .10;
 
-				//_out.rgb = texture(tex2).rgb;//vec3(0,.2,.5);
 				const vec2 specThres = vec2(-0.02);
 				vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.5);
 				vec2 fwD = fwidth(d);
@@ -194,15 +192,35 @@ export class App {
 				vec3 specularRgb = vec3(specular.y);
 				_out.rgb += specularRgb *.06;
 
-
-				//fw = fwidth(d.y); float specular = smoothstep(0.01-fw, 0.01+fw, -d.y*0.7) * 3.0 * -d.y;
-				//_out.rgb += specular;
-				//_out.rgb = applyGlow(_out.rgb, vec3(11.0, 11.0, 0.1), polarAngle01, 0.8, 0.83, heightStep);
+				float glassMask = smoothstep(0.03, 0.12, here);
+				vec2 flowUv = tc * vec2(180.0, 120.0);
+				flowUv += normal.xy * 42.0;
+				flowUv += vec2(-normal.y, normal.x) * (time * 1.8 + here * 60.0);
+				flowUv += vec2(sin(time * 0.7), cos(time * 0.5)) * 4.0;
+				vec2 filingCell = flowUv;
+				vec2 cellId = floor(filingCell);
+				vec2 cellUv = fract(filingCell) - 0.5;
+				float filingRnd = hash12(cellId);
+				float filingAngle = polarAngle + filingRnd * 1.6 + sin(time + filingRnd * 6.2831) * 0.35;
+				vec2 filingLocal = rotate2d(cellUv, filingAngle);
+				vec2 filingSize = mix(vec2(0.035, 0.46), vec2(0.08, 0.26), filingRnd);
+				float filingShape = 1.0 - smoothstep(0.0, 1.0, dot(filingLocal / filingSize, filingLocal / filingSize));
+				float filingDensity = smoothstep(0.52, 0.92, hash12(cellId + 19.37));
+				float filingMask = filingShape * filingDensity * glassMask;
+				float metallicShade = mix(0.18, 0.72, hash12(cellId + 7.11));
+				float edgeHighlight = pow(max(0.0, 1.0 - abs(filingLocal.y) / filingSize.y), 6.0);
+				vec3 filingColor = mix(vec3(0.08, 0.085, 0.09), vec3(0.62, 0.64, 0.68), metallicShade);
+				filingColor += edgeHighlight * 0.18;
+				_out.rgb = mix(_out.rgb, filingColor, filingMask * 0.85);
 			}
+			_out.rgb *= smoothstep(0.0, 0.015, here);
 			`, {
 			releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 			iformat: THREE.RGBAFormat,
 			itype: THREE.FloatType,
+			uniforms: {
+				time: this.elapsedTime
+			},
 			functions: `
 				float mySmoothstep(float thres, float val) {
 					float fw = fwidth(val);
@@ -219,6 +237,16 @@ export class App {
 				const float PI = 3.14159265358979323846;
 				vec2 calcEnvmapTexCoords(vec3 v) {
 					return vec2(atan(v.z, v.x) / (2.0 * PI) + 0.5, asin(clamp(v.y, -1.0, 1.0)) / PI + 0.5);
+				}
+				float hash12(vec2 p) {
+					vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+					p3 += dot(p3, p3.yzx + 33.33);
+					return fract((p3.x + p3.y) * p3.z);
+				}
+				vec2 rotate2d(vec2 p, float angle) {
+					float s = sin(angle);
+					float c = cos(angle);
+					return mat2(c, -s, s, c) * p;
 				}
 				`
 		});
@@ -334,6 +362,7 @@ export class App {
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
+		this.elapsedTime = now * 0.001;
 		this.setGlobalUniforms();
 		
 		let texturesToRelease : GpuCompute.TextureWrapper[] = [];

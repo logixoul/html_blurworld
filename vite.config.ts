@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/erosion/",
+  base: "/glass-modeling/",
   build: {
     outDir: "dist",
   },

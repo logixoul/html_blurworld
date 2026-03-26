@@ -21,6 +21,7 @@ export class App {
 	#renderer : THREE.WebGLRenderer;
 	private windowEquirectangularEnvmap! : THREE.Texture;
 	private windowDiffuseEquirectangularEnvmap!: THREE.Texture;
+	private framesElapsed : number = 0;
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -32,12 +33,13 @@ export class App {
 		this.setGlobalUniforms();
 		this.imageProcessor = new ImageProcessor(this.compute);
 		this.backgroundPicTexOrig = new GpuCompute.TextureWrapper(new THREE.TextureLoader().load(
-			`${import.meta.env.BASE_URL}assets/milkyway.png`,
+			`${import.meta.env.BASE_URL}assets/background.jpg`,
 			() => {
 				this.backgroundPicTex = this.compute.run([this.backgroundPicTexOrig], `
 				_out.rgb = texture().rgb;
-				_out.rgb /= 1.0 - 0.99*_out.rgb;
-				//_out.rgb = pow(_out.rgb, vec3(2.2));
+				_out.rgb = exp(_out.rgb*1.0)-vec3(1.0);
+				//_out.rgb /= 1.0 - 0.99*_out.rgb;
+				_out.rgb = pow(_out.rgb, vec3(2.2));
 				`, {
 					releaseFirstInputTex: false, // todo: fix memory leak
 					itype: THREE.FloatType,
@@ -81,9 +83,10 @@ export class App {
 	private createStateTex() {
 		const documentW = window.innerWidth;
 		const documentH = window.innerHeight;
+		globals.scale = Math.sqrt( (300*300) / (documentW * documentH) );
 		//globals.scale = 0.12;
 		console.log("scale=", globals.scale);
-		globals.scale = 0.5;
+		//globals.scale = 0.5;
 		
 		const img = new Image<Float32Array>(
 			Math.trunc(documentW*globals.scale), Math.trunc(documentH*globals.scale),
@@ -103,8 +106,8 @@ export class App {
 		stateTex = this.compute.run([stateTex],
 			`_out.r = texture().r;`, { itype:
 				//THREE.UnsignedByteType,
-				//THREE.HalfFloatType,
-				THREE.FloatType,
+				THREE.HalfFloatType,
+				//THREE.FloatType,
 			releaseFirstInputTex: true });
 		return stateTex;
 	}
@@ -135,7 +138,7 @@ export class App {
 				}
 				// funky effect copied from an old C# implementation
 				float minus200Derivative(float f) {
-					const float sharpenDerivative = -1.0;
+					const float sharpenDerivative = -10.0;
 					float k = sharpenDerivative;
 					float _2KMinus2 = 2.0*k-2.0;
 					float _3KMinus3 = 3.0*k-3.0;
@@ -151,11 +154,11 @@ export class App {
 	}
 	private make3d_v2_cyberpunk(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
 		options = options || {};
-		/*heightmap = this.compute.run([heightmap], `
-			float f = texture().r;
-			_out.r = pow(f, 1.0);
-			`, { releaseFirstInputTex: true });*/
 
+		heightmap = this.compute.run([heightmap], `
+			float f = texture().r;
+			_out.r = f * 40.0;
+			`, { releaseFirstInputTex: true });
 		let tex3d = this.compute.run([heightmap], `
 			const float M_PI = 3.14159265358;
 			float here = texture().r;
@@ -168,45 +171,59 @@ export class App {
 			float polarAngle01 = (polarAngle/M_PI)*.5 + .5;
 
 			//_out.rgb = vec3(.1);
-			vec3 normal = normalize(vec3(d.x*10.0, d.y*10.0, 1.0));
+			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
+			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+			float fresnelWeight = mix(0.01, 1.0, fresnel);
+
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 envUv = calcEnvmapTexCoords(refl);
-			vec3 refractedRgb = vec3(max(0.0,envUv.y));//texture(envmap, envUv).rgb;
-			_out.rgb = refractedRgb*.1;
+			vec3 refractedRgb = texture(background, tc + d/5.0).rgb;
+			_out.rgb = refractedRgb;
 
 			if(here > 0.0) {
-				//_out.rgb *= abs(d.y);
-				_out.rgb *= .2;
-				float fw;
-				fw = fwidth(here); float heightStep = 1.0-(mySmoothstep(0.2, here)-mySmoothstep(0.4, here)+mySmoothstep(0.6, here));
-				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.2, 0.1)*10.0, polarAngle01, 0.1, 0.13, heightStep);
-				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.4, 0.1).bgr*10.0, polarAngle01, 0.3, 0.33, heightStep);
-				d *= 102.0f;
-				d.x *= -1.0f * .10;
+				_out.rgb *= exp(-here*0.05);
+				float heightStep = mySmoothstep(7.0, here) - mySmoothstep(12.0, here);
+				//heightStep = 1.0 - heightStep;
+				//float dAbs = length(d)*10.0;
+				//float heightStep = mySmoothstep(5.0, dAbs);
+				
+				//float tPulse = 10.0*exp(-mod(t, 100.0)/100.0);
+				float tPulse = 10.0;
+				
+				//_out.rgb = applyGlow(_out.rgb, vec3(0.0), polarAngle01, 0.1, 0.33, heightStep);
+				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.2, 0.1)*tPulse, polarAngle01, 0.1, 0.13, heightStep);
+				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.4, 0.1).bgr*tPulse, polarAngle01, 0.3, 0.33, heightStep);
 
 				//_out.rgb = texture(tex2).rgb;//vec3(0,.2,.5);
-				const vec2 specThres = vec2(-0.02);
-				vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.5);
+				vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.9);
 				vec2 fwD = fwidth(d);
 
-				specular *= vec2(1.0)-smoothstep(specThres - fwD/2.0, specThres + fwD/2.0, d);
-				vec3 specularRgb = vec3(specular.y);
-				_out.rgb += specularRgb *.06;
-
-
-				//fw = fwidth(d.y); float specular = smoothstep(0.01-fw, 0.01+fw, -d.y*0.7) * 3.0 * -d.y;
-				//_out.rgb += specular;
-				//_out.rgb = applyGlow(_out.rgb, vec3(11.0, 11.0, 0.1), polarAngle01, 0.8, 0.83, heightStep);
+				vec2 specThresHi = vec2(0.1);
+				specular *= vec2(1.0)-smoothstep(specThresHi - fwD/2.0, specThresHi + fwD/2.0, d);
+				vec2 specThresLo = vec2(0.001);
+				specular *= vec2(1.0)-smoothstep(specThresLo - fwD/2.0, specThresLo + fwD/2.0, d);
+				vec3 specularRgb = vec3(specular.y + specular.x);
+				_out.rgb += specularRgb * fresnelWeight;
 			}
 			`, {
 			releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 			iformat: THREE.RGBAFormat,
 			itype: THREE.FloatType,
+			uniforms: { background: this.backgroundPicTex.get() },
 			functions: `
 				float mySmoothstep(float thres, float val) {
 					float fw = fwidth(val);
 					return smoothstep(thres - fw, thres + fw, val);
+				}
+				vec3 hsvToRgb(vec3 c) {
+					vec3 rgb = clamp(
+						abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0,
+						0.0,
+						1.0
+					);
+
+					return c.z * mix(vec3(1.0), rgb, c.y);
 				}
 				vec3 applyGlow(vec3 oldColor, vec3 glowColor, float polarAngle01, float hueRangeMin, float hueRangeMax, float heightStep) {
 					float fw = fwidth(polarAngle01);
@@ -214,7 +231,9 @@ export class App {
 						smoothstep(hueRangeMin-fw, hueRangeMin+fw, polarAngle01)
 						- smoothstep(hueRangeMax-fw, hueRangeMax+fw, polarAngle01);
 					glowAmount *= heightStep;
-					return mix(oldColor, glowColor, glowAmount);
+					//polarAngle01 = (polarAngle01 - hueRangeMin) / (hueRangeMax - hueRangeMin);
+					//glowColor = hsvToRgb(vec3(polarAngle01*mouse.x+mouse.y, 1.0, 1.0)) * 10.0;
+					return oldColor+glowColor*glowAmount;//mix(oldColor, glowColor, glowAmount);
 				}
 				const float PI = 3.14159265358979323846;
 				vec2 calcEnvmapTexCoords(vec3 v) {
@@ -224,104 +243,7 @@ export class App {
 		});
 		return tex3d;
 	}
-	private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, options?: any) {
-		options = options || {};
-		/*heightmap = this.compute.run([heightmap], `
-			float f = texture().r;
-			_out.r = pow(f, 1.0);
-			`, { releaseFirstInputTex: true });*/
-		
-		let tex3d = this.compute.run([heightmap], `
-			const float M_PI = 3.14159265358;
-			float here = texture().r;
-			vec2 d = vec2(
-				here - texture(tc - vec2(tsize1.x, 0)).r,
-				here - texture(tc - vec2(0, tsize1.y)).r
-				) * 100.0;
-
-			float polarAngle = atan(d.y, d.x);
-			float glowHue = (polarAngle/M_PI)*.5 + .5;
-			float fw = fwidth(glowHue); float redGlow = smoothstep(0.1-fw, 0.1+fw, glowHue) - smoothstep(0.2-fw, 0.2+fw, glowHue);
-			fw = fwidth(here); redGlow *= 1.0-smoothstep(0.1-fw, 0.1+fw, here);
-
-			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
-			vec3 viewDir = vec3(0.0, 0.0, 1.0);
-			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
-			vec2 mouseUv = vec2(0.5, 0.7);//mouse;
-			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
-			float pitch = (0.5 - mouseUv.y) * PI;
-			normal = rotateY(normal, yaw);
-			normal = rotateX(normal, pitch);
-			vec3 refl = reflect(-viewDir, normal);
-			vec2 envUv = calcEnvmapTexCoords(refl);
-			float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
-			float fresnelWeight = mix(0.01, 1.0, fresnel);
-			vec3 specularRgb = texture(envmap, envUv).rgb * fresnelWeight;
-			
-			// Diffuse phong lighting
-			vec3 diffuseLighting = texture(envmapDiffuse, calcEnvmapTexCoords(normal)).rgb;
-			
-			float eta = 1.0 / 1.33; // air -> water-ish
-			vec3 refracted = refract(viewDir, normal, eta);
-			float z = max(abs(refracted.z), 1e-3);
-			vec2 refractOffset = refracted.xy / z;
-			vec2 refractUv = tc + refractOffset * .03;
-			float lod = manualLod(refractUv, backgroundPicTexSize, refractOffset) + lodBias;
-			lod = clamp(lod, 0.0, lodMax);
-			float absorbCoef = here * 100.0;
-			//_out.rgb = textureLod(backgroundPicTex, refractUv, lod).rgb;
-			_out.rgb = vec3(.1);
-			_out.rgb *= pow(albedo, vec3(absorbCoef));
-			
-			if(here > 0.0)
-				_out.rgb += .5*specularRgb; // specular
-				//_out.rgb = diffuseLighting*.01 + .5*specularRgb; // specular
-				_out.rgb = mix(_out.rgb, vec3(11.0, 0.2, 0.1), redGlow);
-			`, {
-				releaseFirstInputTex: options.releaseFirstInputTex ?? false,
-				iformat: THREE.RGBAFormat,
-				itype: THREE.FloatType,
-				functions: `
-				const float PI = 3.14159265358979323846;
-				vec2 calcEnvmapTexCoords(vec3 v) {
-					return vec2(atan(v.z, v.x) / (2.0 * PI) + 0.5, asin(clamp(v.y, -1.0, 1.0)) / PI + 0.5);
-				}
-				float manualLod(vec2 uv, vec2 texSize, vec2 refractOffset) {
-					vec2 uvPixels = uv * texSize;
-					vec2 dx = dFdx(uvPixels);
-					vec2 dy = dFdy(uvPixels);
-					float rho = max(dot(dx, dx), dot(dy, dy));
-					rho = max(rho, 1e-8);
-					float lod = 0.5 * log2(rho);
-					float refractMetric = length(dFdx(refractOffset)) + length(dFdy(refractOffset));
-					lod += log2(1.0 + refractMetric * refractLodScale);
-					float maxLod = floor(log2(max(texSize.x, texSize.y)));
-					return clamp(lod, 0.0, maxLod);
-				}
-				vec3 rotateY(vec3 v, float a) {
-					float s = sin(a);
-					float c = cos(a);
-					return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z);
-				}
-				vec3 rotateX(vec3 v, float a) {
-					float s = sin(a);
-					float c = cos(a);
-					return vec3(v.x, c * v.y - s * v.z, s * v.y + c * v.z);
-				}
-				`,
-				uniforms: {
-					albedo: albedo,
-					envmap: this.windowEquirectangularEnvmap,
-					envmapDiffuse: this.windowDiffuseEquirectangularEnvmap,
-					backgroundPicTex: this.backgroundPicTex.get(),
-					backgroundPicTexSize: new THREE.Vector2(this.backgroundPicTex.width, this.backgroundPicTex.height),
-					lodBias: 0.0,
-					lodMax: 3.0,
-					refractLodScale: 5.0
-				}
-			});
-		return tex3d;
-	}
+	
 
 	private setGlobalUniforms() {
 		let mousePos = this.input.mousePos;
@@ -331,6 +253,7 @@ export class App {
 		mousePos.divide(new THREE.Vector2(window.innerWidth, window.innerHeight));
 		//console.log("mousePos=", mousePos)
 		this.compute.setGlobalUniform("mouse", mousePos);
+		this.compute.setGlobalUniform("t", this.framesElapsed);
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
@@ -349,7 +272,7 @@ export class App {
 		globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 		//globals.stateTex1 = stateTex1Shrunken;
 
-		let iters = 30;
+		let iters = 14;
 		if(this.input.mousePos !== undefined) {
 			//iters *= this.input.mousePos!.x / window.innerWidth;;
 		}
@@ -361,11 +284,10 @@ export class App {
 		let tex3d = tex3d_0;
 		let tex3dBlurState = this.compute.run([tex3d], `
 			_out.rgb = texture().rgb;
-			_out.rgb *= step(vec3(1.5), _out.rgb);
+			_out.rgb *= step(vec3(9.5), _out.rgb);
 			`, {
 				releaseFirstInputTex: false
 			}
-
 		);
 		let tex3dBlurCollected = this.compute.run([tex3dBlurState], `
 			_out.rgb = vec3(0.0); // zero it out
@@ -390,10 +312,26 @@ export class App {
 			vec3 col = texture(tex1).rgb;
 			vec3 bloom = texture(tex2).rgb;
 			_out.rgb = col + bloom*1.0;
+			//_out.rgb *= .5;
+			//_out.rgb = Uncharted2Tonemap(_out.rgb);
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {
-				releaseFirstInputTex: false
+				releaseFirstInputTex: false,
+				functions: `
+					const float whitePoint = 11.2;
+					// http://filmicworlds.com/blog/filmic-tonemapping-operators/
+					vec3 Uncharted2Tonemap(vec3 color) {
+						// Filmic tonemapping curve (from Uncharted 2)
+						const float A = 0.15;
+						const float B = 0.50;
+						const float C = 0.10;
+						const float D = 0.20;
+						const float E = 0.02;
+						const float F = 0.30;
+						return (color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F);
+					}
+				`
 			});
 		texturesToRelease.push(tex3dBloom);
 		if (this.input.isKeyHeld("keyb")) {
@@ -411,6 +349,8 @@ export class App {
 			this.compute.drawToScreen(tex3dBloom);
 		}
 		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));
+
+		this.framesElapsed++;
 	};
 }
 

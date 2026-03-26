@@ -21,6 +21,7 @@ export class App {
 	#renderer : THREE.WebGLRenderer;
 	private windowEquirectangularEnvmap! : THREE.Texture;
 	private windowDiffuseEquirectangularEnvmap!: THREE.Texture;
+	private elapsedTime = 0;
 
 	constructor() {
 		this.#renderer = new THREE.WebGLRenderer();
@@ -167,42 +168,52 @@ export class App {
 			float polarAngle = atan(d.y, d.x);
 			float polarAngle01 = (polarAngle/M_PI)*.5 + .5;
 
-			//_out.rgb = vec3(.1);
 			vec3 normal = normalize(vec3(d.x*10.0, d.y*10.0, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 envUv = calcEnvmapTexCoords(refl);
-			vec3 refractedRgb = vec3(max(0.0,envUv.y));//texture(envmap, envUv).rgb;
-			_out.rgb = refractedRgb*.1;
+			vec3 reflectedRgb = vec3(max(0.0, envUv.y));
+			_out.rgb = reflectedRgb * .06;
 
 			if(here > 0.0) {
-				//_out.rgb *= abs(d.y);
-				_out.rgb *= .2;
 				float fw;
-				fw = fwidth(here); float heightStep = 1.0-(mySmoothstep(0.2, here)-mySmoothstep(0.4, here)+mySmoothstep(0.6, here));
-				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.2, 0.1)*10.0, polarAngle01, 0.1, 0.13, heightStep);
-				_out.rgb = applyGlow(_out.rgb, vec3(11.0, 0.4, 0.1).bgr*10.0, polarAngle01, 0.3, 0.33, heightStep);
-				d *= 102.0f;
-				d.x *= -1.0f * .10;
+				fw = fwidth(here);
+				float heightStep = 1.0-(mySmoothstep(0.2, here)-mySmoothstep(0.4, here)+mySmoothstep(0.6, here));
+				float glassMask = smoothstep(0.03, 0.12, here);
+				vec2 lavaUv = tc * vec2(5.5, 4.0);
+				lavaUv += normal.xy * 2.5;
+				lavaUv += vec2(-normal.y, normal.x) * (time * 0.45 + here * 5.0);
+				float lavaField = fbm(lavaUv + vec2(0.0, time * 0.22));
+				float lavaDetail = fbm(lavaUv * 2.2 - vec2(time * 0.6, -time * 0.35));
+				float lavaMix = mix(lavaField, lavaDetail, 0.35);
+				float lavaVeins = smoothstep(0.42, 0.82, lavaMix + here * 0.28 + heightStep * 0.15);
+				float lavaCore = pow(clamp(lavaVeins, 0.0, 1.0), 2.4);
+				float lavaGlow = smoothstep(0.55, 1.0, lavaCore + lavaDetail * 0.18);
+				vec3 crustColor = vec3(0.05, 0.01, 0.005);
+				vec3 emberColor = vec3(0.55, 0.05, 0.01);
+				vec3 lavaColor = vec3(1.7, 0.38, 0.02);
+				vec3 coreColor = vec3(4.0, 1.35, 0.18);
+				vec3 molten = mix(crustColor, emberColor, smoothstep(0.18, 0.55, lavaVeins));
+				molten = mix(molten, lavaColor, smoothstep(0.45, 0.8, lavaGlow));
+				molten = mix(molten, coreColor, smoothstep(0.82, 1.0, lavaGlow));
 
-				//_out.rgb = texture(tex2).rgb;//vec3(0,.2,.5);
-				const vec2 specThres = vec2(-0.02);
-				vec2 specular = max(vec2(-d-.1), vec2(0.0f)) + vec2(.5);
-				vec2 fwD = fwidth(d);
-
-				specular *= vec2(1.0)-smoothstep(specThres - fwD/2.0, specThres + fwD/2.0, d);
-				vec3 specularRgb = vec3(specular.y);
-				_out.rgb += specularRgb *.06;
-
-
-				//fw = fwidth(d.y); float specular = smoothstep(0.01-fw, 0.01+fw, -d.y*0.7) * 3.0 * -d.y;
-				//_out.rgb += specular;
-				//_out.rgb = applyGlow(_out.rgb, vec3(11.0, 11.0, 0.1), polarAngle01, 0.8, 0.83, heightStep);
+				float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
+				vec3 specularRgb = texture(envmap, envUv).rgb * (0.08 + fresnel * 0.35);
+				float magmaPulse = 0.82 + 0.18 * sin(time * 2.3 + lavaUv.x * 1.6 + lavaUv.y);
+				_out.rgb = molten * magmaPulse;
+				_out.rgb += specularRgb * 0.22;
+				_out.rgb = applyGlow(_out.rgb, vec3(8.0, 1.0, 0.08), polarAngle01, 0.08, 0.16, heightStep * lavaGlow);
+				_out.rgb += lavaGlow * lavaCore * vec3(1.8, 0.45, 0.04);
+				_out.rgb *= glassMask;
 			}
+			_out.rgb *= smoothstep(0.0, 0.015, here);
 			`, {
 			releaseFirstInputTex: options.releaseFirstInputTex ?? false,
 			iformat: THREE.RGBAFormat,
 			itype: THREE.FloatType,
+			uniforms: {
+				time: this.elapsedTime
+			},
 			functions: `
 				float mySmoothstep(float thres, float val) {
 					float fw = fwidth(val);
@@ -219,6 +230,31 @@ export class App {
 				const float PI = 3.14159265358979323846;
 				vec2 calcEnvmapTexCoords(vec3 v) {
 					return vec2(atan(v.z, v.x) / (2.0 * PI) + 0.5, asin(clamp(v.y, -1.0, 1.0)) / PI + 0.5);
+				}
+				float hash12(vec2 p) {
+					vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+					p3 += dot(p3, p3.yzx + 33.33);
+					return fract((p3.x + p3.y) * p3.z);
+				}
+				float noise12(vec2 p) {
+					vec2 i = floor(p);
+					vec2 f = fract(p);
+					vec2 u = f * f * (3.0 - 2.0 * f);
+					return mix(
+						mix(hash12(i + vec2(0.0, 0.0)), hash12(i + vec2(1.0, 0.0)), u.x),
+						mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x),
+						u.y
+					);
+				}
+				float fbm(vec2 p) {
+					float value = 0.0;
+					float amplitude = 0.5;
+					for(int i = 0; i < 4; i++) {
+						value += noise12(p) * amplitude;
+						p = p * 2.03 + vec2(11.7, -4.3);
+						amplitude *= 0.5;
+					}
+					return value;
 				}
 				`
 		});
@@ -334,6 +370,7 @@ export class App {
 	}
 
 	private animate = (now: DOMHighResTimeStamp) => {
+		this.elapsedTime = now * 0.001;
 		this.setGlobalUniforms();
 		
 		let texturesToRelease : GpuCompute.TextureWrapper[] = [];

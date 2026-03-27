@@ -9,8 +9,8 @@ private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, opti
 			const float M_PI = 3.14159265358;
 			float here = texture().r;
 			vec2 d = vec2(
-				here - texture(tc - vec2(tsize1.x, 0)).r,
-				here - texture(tc - vec2(0, tsize1.y)).r
+				here - texture(tc - vec2(texelSize1.x, 0)).r,
+				here - texture(tc - vec2(0, texelSize1.y)).r
 				) * 100.0;
 
 			float polarAngle = atan(d.y, d.x);
@@ -20,7 +20,7 @@ private make3d(heightmap: GpuCompute.TextureWrapper, albedo: THREE.Vector3, opti
 
 			vec3 normal = normalize(vec3(d.x, d.y, 1.0));
 			vec3 viewDir = vec3(0.0, 0.0, 1.0);
-			vec2 res = vec2(1.0 / tsize1.x, 1.0 / tsize1.y);
+			vec2 res = vec2(1.0 / texelSize1.x, 1.0 / texelSize1.y);
 			vec2 mouseUv = vec2(0.5, 0.7);//mouse;
 			float yaw = (mouseUv.x - 0.5) * PI * 2.0;
 			float pitch = (0.5 - mouseUv.y) * PI;

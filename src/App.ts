@@ -8,6 +8,7 @@ import { Input } from './Input';
 import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import { PresentationForIashu } from './presentationForIashu';
+import { PoissonSolverViaGaussians } from './PoissonSolver';
 
 export class App {
 	private backgroundPicTex!: GpuCompute.TextureWrapper;
@@ -37,7 +38,7 @@ export class App {
 			() => {
 				this.backgroundPicTex = this.compute.run([this.backgroundPicTexOrig], `
 				_out.rgb = texture().rgb;
-				_out.rgb = exp(_out.rgb*1.0)-vec3(1.0);
+				_out.rgb = exp(_out.rgb*1.12)-vec3(1.0);
 				//_out.rgb /= 1.0 - 0.99*_out.rgb;
 				_out.rgb = pow(_out.rgb, vec3(2.2));
 				`, {
@@ -84,6 +85,7 @@ export class App {
 		const documentW = window.innerWidth;
 		const documentH = window.innerHeight;
 		globals.scale = Math.sqrt( (300*300) / (documentW * documentH) );
+		//globals.scale = 1.0;
 		//globals.scale = 0.12;
 		console.log("scale=", globals.scale);
 		//globals.scale = 0.5;
@@ -106,8 +108,8 @@ export class App {
 		stateTex = this.compute.run([stateTex],
 			`_out.r = texture().r;`, { itype:
 				//THREE.UnsignedByteType,
-				THREE.HalfFloatType,
-				//THREE.FloatType,
+				//THREE.HalfFloatType,
+				THREE.FloatType,
 			releaseFirstInputTex: true });
 		return stateTex;
 	}
@@ -157,14 +159,15 @@ export class App {
 
 		heightmap = this.compute.run([heightmap], `
 			float f = texture().r;
+			//f = pow(f, 2.0)+f;
 			_out.r = f * 40.0;
 			`, { releaseFirstInputTex: true });
 		let tex3d = this.compute.run([heightmap], `
 			const float M_PI = 3.14159265358;
 			float here = texture().r;
 			vec2 d = vec2(
-				here - texture(tc - vec2(tsize1.x, 0)).r,
-				here - texture(tc - vec2(0, tsize1.y)).r
+				here - texture(tc - vec2(texelSize1.x, 0)).r,
+				here - texture(tc - vec2(0, texelSize1.y)).r
 				);
 
 			float polarAngle = atan(d.y, d.x);
@@ -178,6 +181,13 @@ export class App {
 
 			vec3 refl = reflect(-viewDir, normal);
 			vec2 envUv = calcEnvmapTexCoords(refl);
+
+			// battle jaggies caused by the normal map being very high frequency
+			vec2 tcOffset = d / 5.0;
+			float tcOffsetLen = length(tcOffset);
+			float tcOffsetLenNew = pow(tcOffsetLen+1.0, 0.9)-1.0;
+			tcOffset *= tcOffsetLenNew / tcOffsetLen;
+
 			vec3 refractedRgb = texture(background, tc + d/5.0).rgb;
 			_out.rgb = refractedRgb;
 
@@ -244,6 +254,52 @@ export class App {
 		return tex3d;
 	}
 	
+	private normalizeGradients(heightmap: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper {
+		let texturesToRelease: GpuCompute.TextureWrapper[] = [];
+
+		const gradForward = this.imageProcessor.gradientForward(heightmap, false);
+		texturesToRelease.push(gradForward);
+		const gradCompressed = this.compute.run([gradForward], `
+			vec2 gradForward = texture().xy;
+			float mag = length(gradForward);
+
+			//float magComp = pow(mag, strength);
+			const float magComp = 1.0;
+			_out.xy = gradForward * (magComp / (mag+1e-4));
+			`, {
+				releaseFirstInputTex: false,
+				uniforms: {
+					strength: this.input.mousePos ? this.input.mousePos.x / window.innerWidth : 0.0,
+				}
+			}
+		);
+		texturesToRelease.push(gradCompressed);
+		const gradCompressedDivergence = this.imageProcessor.divBackward(gradCompressed,
+			false
+		);
+		texturesToRelease.push(gradCompressedDivergence);
+		const poissonSolver = new PoissonSolverViaGaussians(this.compute, this.#renderer);
+
+		const solution = poissonSolver.run(gradCompressedDivergence, false);
+		texturesToRelease.push(solution);
+		const solution01 = this.imageProcessor.to01(this.#renderer, solution, false);
+		//texturesToRelease.push(solution01);
+
+		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));
+
+		return solution01;
+	}
+
+	maskTex(tex1: GpuCompute.TextureWrapper, tex2: GpuCompute.TextureWrapper, releaseFirstInputTex: boolean) : GpuCompute.TextureWrapper {
+		return this.compute.run([tex1, tex2], `
+				float f = texture(tex1).r;
+				f *= texture(tex2).r;
+				_out.r = f;
+				`, {
+			releaseFirstInputTex: releaseFirstInputTex,
+		}
+		);
+	}
 
 	private setGlobalUniforms() {
 		let mousePos = this.input.mousePos;
@@ -278,6 +334,13 @@ export class App {
 		}
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
+		//texturesToRelease.push(extruded0);
+		/*extruded0 = this.normalizeGradients(extruded0);
+		texturesToRelease.push(extruded0);
+		extruded0 = this.maskTex(extruded0, globals.stateTex0, false);
+		//texturesToRelease.push(extruded0);
+*/
+
 		//extruded0 = this.imageProcessor.mul(extruded0, this.input.mousePos!.x / window.innerWidth, true);
 		let tex3d_0 = this.make3d_v2_cyberpunk(extruded0, new THREE.Vector3(0.9, 0.9, 0.9), { releaseFirstInputTex: true });
 		texturesToRelease.push(tex3d_0);
@@ -315,6 +378,7 @@ export class App {
 			//_out.rgb *= .5;
 			//_out.rgb = Uncharted2Tonemap(_out.rgb);
 			_out.rgb = _out.rgb / (_out.rgb + vec3(1.0)); // tone mapping
+			//_out.rgb = smoothstep(vec3(0.0), vec3(1.0), _out.rgb); // contrast boost
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {
 				releaseFirstInputTex: false,
@@ -347,6 +411,9 @@ export class App {
 			this.compute.drawToScreen(toDraw);
 		} else {
 			this.compute.drawToScreen(tex3dBloom);
+			/*
+			this.compute.drawToScreen(extruded0);
+			texturesToRelease.push(extruded0);*/
 		}
 		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));
 

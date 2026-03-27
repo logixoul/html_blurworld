@@ -11,15 +11,16 @@ export class TextureWrapper {
 	set magFilter(value: THREE.MagnificationTextureFilter) {
 		this.actualTextureObj.magFilter = value;
 	}
-	get size(): { width: number; height: number } {
-		if (this.isRenderTarget()) return { width: this.renderTargetObj!.width, height: this.renderTargetObj!.height };
+	get size(): THREE.Vector2 {
+		if (this.isRenderTarget())
+			return new THREE.Vector2(this.renderTargetObj!.width, this.renderTargetObj!.height);
 		const img = this.actualTextureObj.image as { width: number; height: number } | undefined;
-		if(!img)
+		if (!img)
 			throw new Error("TextureWrapper.size: texture image is undefined");
-		return { width: img.width, height: img.height };
+		return new THREE.Vector2(img.width, img.height);
 	}
-	get width() : number { return this.size.width; }
-	get height(): number { return this.size.height; }
+	get width() : number { return this.size.x; }
+	get height(): number { return this.size.y; }
 	get(): THREE.Texture {
 		return this.actualTextureObj;
 	}
@@ -251,7 +252,7 @@ type UniformMap = { [uniform: string]: UniformUnion };
 interface ShadeOpts {
 	releaseFirstInputTex: boolean;
 	toScreen?: boolean;
-	scale?: THREE.Vector2;
+	resultSize?: THREE.Vector2;
 	itype?: THREE.TextureDataType;
 	iformat?: THREE.PixelFormat;
 	mipmaps?: boolean;
@@ -324,7 +325,7 @@ export class GpuComputeContext {
 		var processedOptions : Required<ShadeOpts> = {
 			releaseFirstInputTex: options.releaseFirstInputTex,
 			toScreen: options.toScreen !== undefined ? options.toScreen : false,
-			scale: options.scale !== undefined ? options.scale : new THREE.Vector2(1, 1),
+			resultSize: options.resultSize !== undefined ? options.resultSize : new THREE.Vector2(texs[0].width, texs[0].height),
 			itype: options.itype !== undefined ? options.itype : texs[0].get().type,
 			iformat: options.iformat !== undefined ? options.iformat : texs[0].get().format as THREE.PixelFormat,
 			mipmaps: options.mipmaps !== undefined ? options.mipmaps : false,
@@ -341,10 +342,7 @@ export class GpuComputeContext {
 		if(options.toScreen) {
 			renderTarget = null;
 		} else {
-			var size = new THREE.Vector2(texs[0].width, texs[0].height);
-			size = size.multiply(processedOptions.scale);
-			size.x = Math.floor(size.x);
-			size.y = Math.floor(size.y);
+			var size = processedOptions.resultSize;
 			
 			const key = new TexturePoolKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
 			renderTarget = this.texturePool.get(key);
@@ -362,11 +360,11 @@ export class GpuComputeContext {
 		var i = 0;
 		texs.forEach(tex => {
 			const name = "tex" + (i+1);
-			const tsizeName = "tsize" + (i+1);
+			const texelSizeName = "texelSize" + (i+1);
 			var texture : TextureWrapper = texs[i];
 			processedOptions.uniforms[name] = texture.get();
 			const texSize = getTextureSize(texture.get());
-			processedOptions.uniforms[tsizeName] = new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height);
+			processedOptions.uniforms[texelSizeName] = new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height);
 			i++;
 		});
 

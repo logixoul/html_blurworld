@@ -2,8 +2,9 @@
 	"compilerOptions": {
 	  "outDir": "./built",
 	  "allowJs": true,
-	  "target": "es2017",
-	  "types": ["three"],
+	  "target": "es2020",
+	  "module": "esnext",
+	  "types": ["three", "vite/client"],
 	  "noEmitOnError": true,
 	  /*"noImplicitAny": true,
 	  "strictNullChecks": true,

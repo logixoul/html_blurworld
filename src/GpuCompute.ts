@@ -128,25 +128,16 @@ type MeshCache = { [key: string]: THREE.Mesh };
 var programCache : ProgramCache = { };
 var meshCache : MeshCache = { };
 
-class TexturePoolKey {
-	width : number = 0;
-	height : number = 0;
-	itype : THREE.TextureDataType;
-	iformat: THREE.PixelFormat = THREE.RedFormat;
-	constructor(w : number, h : number, itype : THREE.TextureDataType, iformat: THREE.PixelFormat = THREE.RedFormat) {
-		console.assert(Number.isInteger(w));
-		console.assert(Number.isInteger(h));
-		this.width = w;
-		this.height = h;
-		this.itype = itype;
-		this.iformat = iformat;
+export class TexturePoolKey {
+	constructor(public width : number, public height : number, public itype : THREE.TextureDataType, public iformat : THREE.PixelFormat = THREE.RedFormat, public wrap : THREE.Wrapping) {
+		console.assert(Number.isInteger(width));
+		console.assert(Number.isInteger(height));
 	}
 	toString() : string {
-		return this.width + "," + this.height + "," + this.itype + "," + this.iformat;
-		//return JSON.stringify(this);
+		return `${this.width},${this.height},${this.itype},${this.iformat},${this.wrap}`;
 	}
 	toPrettyString() : string {
-		return "TexturePoolKey(width=" + this.width + ", height=" + this.height + ", itype=" + this.itype + ", iformat=" + this.iformat + ")";
+		return `TexturePoolKey(width=${this.width}, height=${this.height}, itype=${this.itype}, iformat=${this.iformat}, wrap=${this.wrap})`;
 	}
 }
 
@@ -163,22 +154,23 @@ function console_log(s : string) {
 	//console.log(s);
 }
 
-class TexturePool {
+export class TexturePool {
 	private mapOfTextures = new Map<string, Array<TextureWrapper>>(); // key obtained by TexturePoolKey.toString()
 	private infos = new Map<string, TextureInfo>(); // key obtained by TextureWrapper.toString()
 
 	private setDefaults(tex : THREE.Texture) {
 		tex.minFilter = THREE.LinearFilter;
 		tex.magFilter = THREE.LinearFilter;
-		tex.wrapS = THREE.ClampToEdgeWrapping;
-		tex.wrapT = THREE.ClampToEdgeWrapping;
+		//tex.wrapT = tex.wrapS = THREE.MirroredRepeatWrapping;
+		//tex.wrapS = THREE.MirroredRepeatWrapping;
+		//tex.wrapT = THREE.MirroredRepeatWrapping;
 		//tex.generateMipmaps = false;
 	}
 
 	numTexturesDbg = 0;
 
 	_allocTex(key : TexturePoolKey) : TextureWrapper {
-		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype, format: key.iformat });
+		var tex = new THREE.WebGLRenderTarget(key.width, key.height, { wrapS: key.wrap, wrapT: key.wrap, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: key.itype, format: key.iformat });
 		var texWrapper = new TextureWrapper(tex);
 
 		var keyString : string = texWrapper.toString();
@@ -259,6 +251,15 @@ interface ShadeOpts {
 	uniforms?: UniformMap,
 	vshaderExtra?: string,
 	functions?: string,
+	resultTexParams?: THREE.TextureParameters
+}
+
+export function vectorScaledCeiled(v : THREE.Vector2, scale : number) : THREE.Vector2 {
+	var size = v.clone();
+	size = size.multiplyScalar(scale);
+	size.x = Math.ceil(size.x);
+	size.y = Math.ceil(size.y);
+	return size;
 }
 
 export class GpuComputeContext {
@@ -297,8 +298,13 @@ export class GpuComputeContext {
 		this.compute_base(texs, fshader, { ...options, toScreen: true });
 	}
 
-	run(texs : Array<TextureWrapper>, fshader : string, options : ShadeOpts) : TextureWrapper {
-		return this.compute_base(texs, fshader, options)!;
+	run(texs : Array<TextureWrapper> | TextureWrapper, fshader : string, options : ShadeOpts) : TextureWrapper {
+		if(texs instanceof Array)
+			return this.compute_base(texs, fshader, options)!;
+		else if(texs instanceof TextureWrapper)
+			return this.compute_base([texs], fshader, options)!;
+		else
+			throw new Error("unsupported argument type");
 	}
 
 	constructFullFragmentShaderSource(processedOptions : Required<ShadeOpts>, baseSource : string) {
@@ -321,6 +327,10 @@ export class GpuComputeContext {
 		return [fullFragmentShader, fullVertexShader];
 	}
 
+	public getTextureFromPool(key : TexturePoolKey) {
+		return this.texturePool.get(key);
+	}
+
 	private compute_base(texs : Array<TextureWrapper>, fshader : string, options : ShadeOpts) : TextureWrapper | null {
 		var processedOptions : Required<ShadeOpts> = {
 			releaseFirstInputTex: options.releaseFirstInputTex,
@@ -332,6 +342,7 @@ export class GpuComputeContext {
 			uniforms: options.uniforms || { },
 			vshaderExtra: options.vshaderExtra || "",
 			functions: options.functions || "",
+			resultTexParams: options.resultTexParams || { wrapS: THREE.MirroredRepeatWrapping }
 		};
 		
 		//processedOptions.uniforms = new Map<string, UniformUnion>(processedOptions.uniforms);
@@ -342,9 +353,12 @@ export class GpuComputeContext {
 		if(options.toScreen) {
 			renderTarget = null;
 		} else {
-			var size = processedOptions.resultSize;
-			
-			const key = new TexturePoolKey(size.x, size.y, processedOptions.itype, processedOptions.iformat);
+			const key = new TexturePoolKey(
+				processedOptions.resultSize.x, processedOptions.resultSize.y, processedOptions.itype, processedOptions.iformat,
+				THREE.MirroredRepeatWrapping
+				//processedOptions.resultTexParams.wrapS!
+				);
+				//console.log(key.toPrettyString())
 			renderTarget = this.texturePool.get(key);
 			const rtTex = renderTarget.get();
 			if (processedOptions.mipmaps) {
@@ -367,9 +381,6 @@ export class GpuComputeContext {
 			processedOptions.uniforms[texelSizeName] = new THREE.Vector2(1.0 / texSize.width, 1.0 / texSize.height);
 			i++;
 		});
-
-		
-
 		
 		var cachedMaterial = programCache[fshader];
 		if(!cachedMaterial) {

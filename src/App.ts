@@ -12,7 +12,7 @@ import { PresentationForIashu } from './presentationForIashu';
 import { PoissonSolverViaGaussians } from './PoissonSolver';
 
 class Config {
-	pretty = true;
+	renderMode = "curvatureDemo";
 }
 
 export class App {
@@ -20,7 +20,6 @@ export class App {
 	private assetsLoaded: boolean = false;
 	private backgroundPicTexOrig: GpuCompute.TextureWrapper;
 	private framerateCounter: FramerateCounter;
-	private limitFramerateCheckbox: HTMLInputElement;
 	private compute : GpuCompute.GpuComputeContext;
 	private imageProcessor : ImageProcessor;
 	private input : Input;
@@ -31,9 +30,6 @@ export class App {
 	private config = new Config();
 
 	constructor() {
-		const gui = new GUI();
-		gui.add(this.config, "pretty");
-
 		this.#renderer = new THREE.WebGLRenderer();
 		document.body.appendChild( this.#renderer.domElement );
 
@@ -85,7 +81,14 @@ export class App {
 
 		document.defaultView!.addEventListener("resize", this.onResize);
 		this.framerateCounter = new FramerateCounter();
-		this.limitFramerateCheckbox = document.getElementById("limitFramerate")! as HTMLInputElement;
+
+		const gui = new GUI();
+		
+		gui.add(this.config, "renderMode", ["pretty", "basic", "curvatureDemo"]).name("Render mode").onChange(() => {
+			// reset the state so that the user can see the difference between modes more clearly
+			this.compute.willNoLongerUse(globals.stateTex0);
+			globals.stateTex0 = this.createStateTex();
+		});
 
 		requestAnimationFrame(this.animate);
 	}
@@ -325,35 +328,31 @@ export class App {
 		this.setGlobalUniforms();
 		
 		this.framerateCounter.update(now);
-		if (this.limitFramerateCheckbox.checked)
-			setTimeout(this.animate, 1000);
-		else
-			requestAnimationFrame(this.animate);
+		requestAnimationFrame(this.animate);
 		
 		if (!this.assetsLoaded)
 			return;
 		globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
-		//globals.stateTex1 = stateTex1Shrunken;
 
-
-		
-		if (this.config.pretty) {
-			const toDraw = this.doPrettyPostprocessing(globals.stateTex0);
-			this.compute.drawToScreen(toDraw);
-			this.compute.willNoLongerUse(toDraw);
-		} else {
-			const toDraw = this.doBasicPostprocessing();
-
-			this.compute.drawToScreen(toDraw);
-			this.compute.willNoLongerUse(toDraw);
-
-		}
+		const postprocessed = this.doPostProcessing(globals.stateTex0);
+		this.compute.drawToScreen(postprocessed);
+		this.compute.willNoLongerUse(postprocessed);
 
 		this.framesElapsed++;
 	};
 
-	private doBasicPostprocessing() {
-		return this.compute.run([globals.stateTex0], `
+	private doPostProcessing(tex: GpuCompute.TextureWrapper): GpuCompute.TextureWrapper {
+		if (this.config.renderMode === "pretty") {
+			return this.doPrettyPostprocessing(globals.stateTex0);
+		} else if (this.config.renderMode === "curvatureDemo") {
+			return this.doCurvatureDemoPostprocessing(globals.stateTex0);
+		} else {
+			return this.doBasicPostprocessing(globals.stateTex0);
+		}
+	}
+
+	private doBasicPostprocessing(tex: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper {
+		return this.compute.run([tex], `
 				float f = 1.0 - texture().r;
 				float fw = fwidth(f);
 				f = smoothstep(0.5-fw, 0.5+fw, f);
@@ -365,7 +364,68 @@ export class App {
 		});
 	}
 
-	doPrettyPostprocessing(tex: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper {
+	private doCurvatureDemoPostprocessing(tex: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper{
+		const result = this.compute.run([globals.stateTex0], `
+				ivec2 fc = ivec2(gl_FragCoord.xy) - ivec2(1, 1);
+				ivec2 texSize = textureSize(tex1, 0);
+				ivec2 fcClamped = clamp(fc, ivec2(0), texSize - ivec2(1));
+				ivec2 leftCoord = clamp(fc + ivec2(-1, 0), ivec2(0), texSize - ivec2(1));
+				ivec2 rightCoord = clamp(fc + ivec2(1, 0), ivec2(0), texSize - ivec2(1));
+				ivec2 downCoord = clamp(fc + ivec2(0, -1), ivec2(0), texSize - ivec2(1));
+				ivec2 upCoord = clamp(fc + ivec2(0, 1), ivec2(0), texSize - ivec2(1));
+				ivec2 downLeftCoord = clamp(fc + ivec2(-1, -1), ivec2(0), texSize - ivec2(1));
+				ivec2 downRightCoord = clamp(fc + ivec2(1, -1), ivec2(0), texSize - ivec2(1));
+				ivec2 upLeftCoord = clamp(fc + ivec2(-1, 1), ivec2(0), texSize - ivec2(1));
+				ivec2 upRightCoord = clamp(fc + ivec2(1, 1), ivec2(0), texSize - ivec2(1));
+
+				float here = texelFetch(tex1, fcClamped, 0).r;
+				vec3 c = vec3(here);
+
+				float left = texelFetch(tex1, leftCoord, 0).r;
+				float right = texelFetch(tex1, rightCoord, 0).r;
+				float down = texelFetch(tex1, downCoord, 0).r;
+				float up = texelFetch(tex1, upCoord, 0).r;
+				float downLeft = texelFetch(tex1, downLeftCoord, 0).r;
+				float downRight = texelFetch(tex1, downRightCoord, 0).r;
+				float upLeft = texelFetch(tex1, upLeftCoord, 0).r;
+				float upRight = texelFetch(tex1, upRightCoord, 0).r;
+
+				float hx = 1.0;
+				float hy = 1.0;
+				float fx = (right - left) / (2.0 * hx);
+				float fy = (up - down) / (2.0 * hy);
+				float fxx = (right - 2.0 * here + left) / (hx * hx);
+				float fyy = (up - 2.0 * here + down) / (hy * hy);
+				float fxy = (upRight - upLeft - downRight + downLeft) / (4.0 * hx * hy);
+
+				float gradSq = fx * fx + fy * fy;
+				if(gradSq <= 0.03) {
+					_out.rgb = c;
+					return;
+				}
+
+				float numerator = fxx * fy * fy - 2.0 * fx * fy * fxy + fyy * fx * fx;
+				float denominator = pow(gradSq, 1.5);
+				float curvature = numerator / denominator;
+
+				curvature *= 20.0;
+				curvature = clamp(curvature, -1.0, 1.0);
+				if(curvature > 0.0) {
+					c = mix(c, vec3(1.0, 0.2, 0.0), curvature);
+				} else {
+					c = mix(c, vec3(0.0, 0.5, 1.0), -curvature);
+				}
+
+				_out.rgb = c;
+				`, {
+			releaseFirstInputTex: false,
+			iformat: THREE.RGBAFormat,
+			//resultSize: new THREE.Vector2(window.innerWidth, window.innerHeight)
+		});
+		return result;
+	}
+
+	private doPrettyPostprocessing(tex: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper {
 		const texturesToRelease: GpuCompute.TextureWrapper[] = [];
 
 

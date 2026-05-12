@@ -110,6 +110,25 @@ export class ImageProcessor {
 		);
 	}
 
+	gradientCentral(tex: TextureWrapper, releaseFirstInputTex: boolean): TextureWrapper {
+		return this.compute.run([tex], `
+			float here = texture().r;
+			float left = texture(tex1, tc + vec2(texelSize1.x, 0)).r;
+			float right = texture(tex1, tc - vec2(texelSize1.x, 0)).r;
+			float top = texture(tex1, tc + vec2(0, texelSize1.y)).r;
+			float bottom = texture(tex1, tc - vec2(0, texelSize1.y)).r;
+			float dx = (left - right) * 0.5;
+			float dy = (top - bottom) * 0.5;
+
+			_out.rg = vec2(dx, dy);
+			`
+			, {
+				releaseFirstInputTex: releaseFirstInputTex,
+				iformat: THREE.RGBAFormat
+			}
+		);
+	}
+
 	to01_cut(renderer: THREE.WebGLRenderer, tex: TextureWrapper, bottomPercentile: number, topPercentile: number, releaseFirstInputTex: boolean) {
 		/*const texDownsampledMonochrome = this.compute.run(tex, `
 			_out.r = dot(texture().rgb, vec3(0.2126, 0.7152, 0.0722));

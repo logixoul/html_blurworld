@@ -9,20 +9,6 @@
 				font-family: "Consolas", monospace;
 			}
 			canvas { display: block; }
-			#limitFramerateContainer {
-				position: absolute;
-				top: 1em;
-				left: 1em;
-				color: white;
-				text-shadow:
-					0 0 2px black,
-					0 0 2px black,
-					0 0 2px black,
-					0 0 2px black,
-					0 0 2px black
-					;
-				display: none;
-			}
 			#intro {
 				font-size: 3em;
 				position: absolute;
@@ -41,7 +27,6 @@
 			#framerate {
 				position: absolute;
 				color: white;
-				dispslay: none;
 			}
 			#loadingScreen {
 				font-size: 3em;
@@ -56,16 +41,20 @@
 				left: 50%;
 				transform: translateX(-50%) translateY(-50%);
 			}
+			.lil-gui { 
+				--background-color: #000;
+				--widget-color: #0af;
+				--padding: 12px;
+				--width: 600px;
+
+				font-size: 1.5em;
+			}
 		</style>
-		<script type="module" crossorigin src="/glass-modeling/assets/index-aEfEuIv4.js"></script>
+		<script type="module" crossorigin src="/glass-modeling/assets/index-BrpWmdI3.js"></script>
 	</head>
 	<body>
 		<div id="intro">Drag to draw</div>
 		<div id="framerate"></div>
 		<div id="loadingScreen"><div>Loading...</div></div>
-		<div id="limitFramerateContainer">
-			<input type="checkbox" id="limitFramerate" name="limitFramerate">
-  			<label for="limitFramerate">Limit framerate</label>
-		<div>
 	</body>
 </html>

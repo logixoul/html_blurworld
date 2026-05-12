@@ -367,7 +367,7 @@ export class App {
 	private doCurvatureDemoPostprocessing(tex: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper{
 		const result = this.compute.run([globals.stateTex0], `
 				float here = texture().r;
-				vec3 c = vec3(here);
+				vec3 c = vec3(1.0 - here);
 
 				float left = texture(tc - vec2(texelSize1.x, 0.0)).r;
 				float right = texture(tc + vec2(texelSize1.x, 0.0)).r;

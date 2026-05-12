@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import GUI from 'lil-gui';
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import { RGBE, RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import * as GpuCompute from './GpuCompute';
@@ -9,6 +10,10 @@ import { Image } from "./Image";
 import { FramerateCounter } from "./FramerateCounter";
 import { PresentationForIashu } from './presentationForIashu';
 import { PoissonSolverViaGaussians } from './PoissonSolver';
+
+class Config {
+	pretty = true;
+}
 
 export class App {
 	private backgroundPicTex!: GpuCompute.TextureWrapper;
@@ -23,8 +28,12 @@ export class App {
 	private windowEquirectangularEnvmap! : THREE.Texture;
 	private windowDiffuseEquirectangularEnvmap!: THREE.Texture;
 	private framesElapsed : number = 0;
+	private config = new Config();
 
 	constructor() {
+		const gui = new GUI();
+		gui.add(this.config, "pretty ");
+
 		this.#renderer = new THREE.WebGLRenderer();
 		document.body.appendChild( this.#renderer.domElement );
 
@@ -315,8 +324,6 @@ export class App {
 	private animate = (now: DOMHighResTimeStamp) => {
 		this.setGlobalUniforms();
 		
-		let texturesToRelease : GpuCompute.TextureWrapper[] = [];
-
 		this.framerateCounter.update(now);
 		if (this.limitFramerateCheckbox.checked)
 			setTimeout(this.animate, 1000);
@@ -328,10 +335,41 @@ export class App {
 		globals.stateTex0 = this.doSimulationStep(globals.stateTex0, /*releaseFirstInputTex=*/ true);
 		//globals.stateTex1 = stateTex1Shrunken;
 
-		let iters = 14;
-		if(this.input.mousePos !== undefined) {
-			//iters *= this.input.mousePos!.x / window.innerWidth;;
+
+		
+		if (this.config.pretty) {
+			const toDraw = this.doPrettyPostprocessing(globals.stateTex0);
+			this.compute.drawToScreen(toDraw);
+			this.compute.willNoLongerUse(toDraw);
+		} else {
+			const toDraw = this.doBasicPostprocessing();
+
+			this.compute.drawToScreen(toDraw);
+			this.compute.willNoLongerUse(toDraw);
+
 		}
+
+		this.framesElapsed++;
+	};
+
+	private doBasicPostprocessing() {
+		return this.compute.run([globals.stateTex0], `
+				float f = 1.0 - texture().r;
+				float fw = fwidth(f);
+				f = smoothstep(0.5-fw, 0.5+fw, f);
+				_out.rgb = vec3(f);
+				`, {
+			releaseFirstInputTex: false,
+			iformat: THREE.RGBAFormat,
+			resultSize: new THREE.Vector2(window.innerWidth, window.innerHeight)
+		});
+	}
+
+	doPrettyPostprocessing(tex: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper {
+		const texturesToRelease: GpuCompute.TextureWrapper[] = [];
+
+
+		const iters = 14;
 
 		var extruded0 = this.imageProcessor.extrude(globals.stateTex0, iters, globals.scale, /*releaseFirstInputTex=*/ false);
 		//texturesToRelease.push(extruded0);
@@ -349,25 +387,25 @@ export class App {
 			_out.rgb = texture().rgb;
 			_out.rgb *= step(vec3(9.5), _out.rgb);
 			`, {
-				releaseFirstInputTex: false
-			}
+			releaseFirstInputTex: false
+		}
 		);
 		let tex3dBlurCollected = this.compute.run([tex3dBlurState], `
 			_out.rgb = vec3(0.0); // zero it out
 			`, {
-				releaseFirstInputTex: false
-			});
-		for(let i = 0; i < 6; i++) {
+			releaseFirstInputTex: false
+		});
+		for (let i = 0; i < 6; i++) {
 			//tex3dBlurState = this.imageProcessor.scale(tex3dBlurState, 0.5, true);
 			tex3dBlurState = this.imageProcessor.blur(tex3dBlurState, 1.0, 0.5, true);
 			tex3dBlurCollected = this.compute.run([tex3dBlurCollected, tex3dBlurState], `
 				_out.rgb = texture(tex1).rgb + texture(tex2).rgb * weight;
 				`, {
-					releaseFirstInputTex: true,
-					uniforms: {
-						weight: 0.1//1.0 / (i*1.5+.5)
-					}
-				});
+				releaseFirstInputTex: true,
+				uniforms: {
+					weight: 0.1//1.0 / (i*1.5+.5)
+				}
+			});
 		}
 		texturesToRelease.push(tex3dBlurState);
 		texturesToRelease.push(tex3dBlurCollected);
@@ -381,8 +419,8 @@ export class App {
 			//_out.rgb = smoothstep(vec3(0.0), vec3(1.0), _out.rgb); // contrast boost
 			_out.rgb = pow(_out.rgb, vec3(1.0/2.2)); // gamma correction
 			`, {
-				releaseFirstInputTex: false,
-				functions: `
+			releaseFirstInputTex: false,
+			functions: `
 					const float whitePoint = 11.2;
 					// http://filmicworlds.com/blog/filmic-tonemapping-operators/
 					vec3 Uncharted2Tonemap(vec3 color) {
@@ -396,29 +434,10 @@ export class App {
 						return (color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F);
 					}
 				`
-			});
-		texturesToRelease.push(tex3dBloom);
-		if (this.input.isKeyHeld("keyb")) {
-			this.compute.drawToScreen(tex3dBlurCollected);
-		} else if (this.input.isKeyHeld("digit1")) {
-			var toDraw = this.compute.run([extruded0], `
-				float state = texture(tex1).r;
-				_out.r = state;`
-				, {
-					releaseFirstInputTex: false
-				}
-			);
-			this.compute.drawToScreen(toDraw);
-		} else {
-			this.compute.drawToScreen(tex3dBloom);
-			/*
-			this.compute.drawToScreen(extruded0);
-			texturesToRelease.push(extruded0);*/
-		}
+		});
 		texturesToRelease.forEach(t => this.compute.willNoLongerUse(t));
-
-		this.framesElapsed++;
-	};
+		return tex3dBloom;
+	}
 }
 
 new App();

@@ -366,37 +366,23 @@ export class App {
 
 	private doCurvatureDemoPostprocessing(tex: GpuCompute.TextureWrapper) : GpuCompute.TextureWrapper{
 		const result = this.compute.run([globals.stateTex0], `
-				ivec2 fc = ivec2(gl_FragCoord.xy) - ivec2(1, 1);
-				ivec2 texSize = textureSize(tex1, 0);
-				ivec2 fcClamped = clamp(fc, ivec2(0), texSize - ivec2(1));
-				ivec2 leftCoord = clamp(fc + ivec2(-1, 0), ivec2(0), texSize - ivec2(1));
-				ivec2 rightCoord = clamp(fc + ivec2(1, 0), ivec2(0), texSize - ivec2(1));
-				ivec2 downCoord = clamp(fc + ivec2(0, -1), ivec2(0), texSize - ivec2(1));
-				ivec2 upCoord = clamp(fc + ivec2(0, 1), ivec2(0), texSize - ivec2(1));
-				ivec2 downLeftCoord = clamp(fc + ivec2(-1, -1), ivec2(0), texSize - ivec2(1));
-				ivec2 downRightCoord = clamp(fc + ivec2(1, -1), ivec2(0), texSize - ivec2(1));
-				ivec2 upLeftCoord = clamp(fc + ivec2(-1, 1), ivec2(0), texSize - ivec2(1));
-				ivec2 upRightCoord = clamp(fc + ivec2(1, 1), ivec2(0), texSize - ivec2(1));
-
-				float here = texelFetch(tex1, fcClamped, 0).r;
+				float here = texture().r;
 				vec3 c = vec3(here);
 
-				float left = texelFetch(tex1, leftCoord, 0).r;
-				float right = texelFetch(tex1, rightCoord, 0).r;
-				float down = texelFetch(tex1, downCoord, 0).r;
-				float up = texelFetch(tex1, upCoord, 0).r;
-				float downLeft = texelFetch(tex1, downLeftCoord, 0).r;
-				float downRight = texelFetch(tex1, downRightCoord, 0).r;
-				float upLeft = texelFetch(tex1, upLeftCoord, 0).r;
-				float upRight = texelFetch(tex1, upRightCoord, 0).r;
+				float left = texture(tc - vec2(texelSize1.x, 0.0)).r;
+				float right = texture(tc + vec2(texelSize1.x, 0.0)).r;
+				float down = texture(tc - vec2(0.0, texelSize1.y)).r;
+				float up = texture(tc + vec2(0.0, texelSize1.y)).r;
+				float downLeft = texture(tc - texelSize1).r;
+				float downRight = texture(tc + vec2(texelSize1.x, -texelSize1.y)).r;
+				float upLeft = texture(tc + vec2(-texelSize1.x, texelSize1.y)).r;
+				float upRight = texture(tc + texelSize1).r;
 
-				float hx = 1.0;
-				float hy = 1.0;
-				float fx = (right - left) / (2.0 * hx);
-				float fy = (up - down) / (2.0 * hy);
-				float fxx = (right - 2.0 * here + left) / (hx * hx);
-				float fyy = (up - 2.0 * here + down) / (hy * hy);
-				float fxy = (upRight - upLeft - downRight + downLeft) / (4.0 * hx * hy);
+				float fx = (right - left) * 0.5;
+				float fy = (up - down) * 0.5;
+				float fxx = right - 2.0 * here + left;
+				float fyy = up - 2.0 * here + down;
+				float fxy = (upRight - upLeft - downRight + downLeft) * 0.25;
 
 				float gradSq = fx * fx + fy * fy;
 				if(gradSq <= 0.03) {

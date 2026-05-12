@@ -32,7 +32,7 @@ export class App {
 
 	constructor() {
 		const gui = new GUI();
-		gui.add(this.config, "pretty ");
+		gui.add(this.config, "pretty");
 
 		this.#renderer = new THREE.WebGLRenderer();
 		document.body.appendChild( this.#renderer.domElement );
